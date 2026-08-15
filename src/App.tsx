@@ -1,0 +1,188 @@
+import React, { useState, useEffect } from 'react';
+import { UserProfile, Experience, SolutionAnalysis, Category } from './types';
+import {
+  getLocalUser,
+  fetchExperiences,
+  getLocalActiveSolutions,
+  getLocalSavedSolutions,
+} from './services/api';
+import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+import { AuthModal } from './components/AuthModal';
+import { HomeView } from './views/HomeView';
+import { AskView } from './views/AskView';
+import { SolutionView } from './views/SolutionView';
+import { ExperiencesView } from './views/ExperiencesView';
+import { ShareExperienceView } from './views/ShareExperienceView';
+import { MySolutionsView } from './views/MySolutionsView';
+import { DashboardView } from './views/DashboardView';
+import { OnboardingView } from './views/OnboardingView';
+import { LoginView } from './views/LoginView';
+import { SignUpView } from './views/SignUpView';
+
+export type ViewMode =
+  | 'home'
+  | 'ask'
+  | 'solution'
+  | 'experiences'
+  | 'share-experience'
+  | 'solutions'
+  | 'dashboard'
+  | 'onboarding'
+  | 'login'
+  | 'signup';
+
+export default function App() {
+  const [currentView, setCurrentView] = useState<ViewMode>('home');
+  const [user, setUser] = useState<UserProfile>(getLocalUser());
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [featuredExperiences, setFeaturedExperiences] = useState<Experience[]>([]);
+  const [currentSolution, setCurrentSolution] = useState<SolutionAnalysis | null>(null);
+
+  // Ask view state presets
+  const [askInitialProblem, setAskInitialProblem] = useState<string>('');
+  const [askInitialCategory, setAskInitialCategory] = useState<Category>('Career');
+
+  // Solution counters
+  const [activeSolutionsCount, setActiveSolutionsCount] = useState<number>(0);
+
+  const refreshCounts = () => {
+    const active = getLocalActiveSolutions();
+    const saved = getLocalSavedSolutions();
+    setActiveSolutionsCount(active.length + saved.length);
+  };
+
+  useEffect(() => {
+    fetchExperiences({ limit: 6 }).then((data) => {
+      setFeaturedExperiences(data.experiences);
+    });
+    refreshCounts();
+  }, []);
+
+  const handleNavigate = (view: ViewMode) => {
+    setCurrentView(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    refreshCounts();
+  };
+
+  const handleSelectProblemPreset = (problemText: string, category?: Category) => {
+    setAskInitialProblem(problemText);
+    if (category) setAskInitialCategory(category);
+  };
+
+  const handleAnalysisComplete = (solution: SolutionAnalysis) => {
+    setCurrentSolution(solution);
+    setCurrentView('solution');
+    refreshCounts();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectSolution = (solution: SolutionAnalysis) => {
+    setCurrentSolution(solution);
+    setCurrentView('solution');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50/50 text-slate-900 font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Top Navigation */}
+      <Navbar
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        user={user}
+        onOpenAuth={() => setAuthModalOpen(true)}
+        activeSolutionsCount={activeSolutionsCount}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {currentView === 'home' && (
+          <HomeView
+            onNavigate={handleNavigate}
+            onSelectProblemPreset={handleSelectProblemPreset}
+            featuredExperiences={featuredExperiences}
+          />
+        )}
+
+        {currentView === 'onboarding' && (
+          <OnboardingView
+            onComplete={() => handleNavigate('home')}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'login' && (
+          <LoginView
+            onNavigate={handleNavigate}
+            onSuccessRedirect={() => handleNavigate('dashboard')}
+          />
+        )}
+
+        {currentView === 'signup' && (
+          <SignUpView
+            onNavigate={handleNavigate}
+            onSuccessRedirect={() => handleNavigate('dashboard')}
+          />
+        )}
+
+        {currentView === 'ask' && (
+          <AskView
+            initialProblem={askInitialProblem}
+            initialCategory={askInitialCategory}
+            onAnalysisComplete={handleAnalysisComplete}
+          />
+        )}
+
+        {currentView === 'solution' && currentSolution && (
+          <SolutionView
+            solution={currentSolution}
+            onBack={() => handleNavigate('ask')}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'experiences' && (
+          <ExperiencesView
+            initialCategory={askInitialCategory}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'share-experience' && (
+          <ShareExperienceView
+            onNavigate={handleNavigate}
+            onExperienceAdded={(newExp) => {
+              setFeaturedExperiences((prev) => [newExp, ...prev]);
+            }}
+          />
+        )}
+
+        {currentView === 'solutions' && (
+          <MySolutionsView
+            onSelectSolution={handleSelectSolution}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'dashboard' && (
+          <DashboardView
+            user={user}
+            onNavigate={handleNavigate}
+            onSelectSolution={handleSelectSolution}
+          />
+        )}
+      </main>
+
+      {/* Global Footer */}
+      <Footer onNavigate={handleNavigate} />
+
+      {/* User Profile / Auth Modal */}
+      <AuthModal
+        user={user}
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onUpdateUser={(updated) => setUser(updated)}
+      />
+    </div>
+  );
+}
