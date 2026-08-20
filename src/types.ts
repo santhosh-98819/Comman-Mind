@@ -1,11 +1,15 @@
 export type Category =
   | 'Career'
+  | 'Career & Jobs'
   | 'Education'
   | 'Technology'
   | 'Productivity'
+  | 'Personal Growth'
   | 'Personal Decisions'
   | 'Finance'
   | 'Relationships'
+  | 'Health & Fitness'
+  | 'Daily Life'
   | 'Everyday Problems'
   | 'Other';
 
@@ -135,21 +139,70 @@ export interface OutcomeFeedback {
   generatedExperienceId?: string;
 }
 
+export type ProfileVisibility = 'public' | 'limited' | 'private';
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+export interface NotificationPreferences {
+  emailOnOutcome: boolean;
+  inAppOnOutcome: boolean;
+  categoryDigests: boolean;
+}
+
+export interface OutcomeNotification {
+  id: string;
+  type: 'outcome_reported' | 'experience_shared' | 'solution_saved' | 'system_broadcast';
+  title: string;
+  message: string;
+  outcomeStatus?: OutcomeStatus;
+  category?: Category;
+  authorName?: string;
+  experienceId?: string;
+  solutionId?: string;
+  situationSnippet?: string;
+  lessonSnippet?: string;
+  actionsSnippet?: string[];
+  createdAt: string;
+  read?: boolean;
+  emailSent?: boolean;
+  emailRecipientCount?: number;
+  deliveryDetails?: {
+    emailsSentTo: string[];
+    timestamp: string;
+    subject: string;
+    previewBody: string;
+  };
+}
+
 export interface UserProfile {
   id: string;
+  uid?: string;
   name: string;
+  displayName?: string;
   email?: string;
-  isGuest: boolean;
+  photoURL?: string;
+  bannerURL?: string;
   avatarSeed?: string;
+  about?: string;
+  interests?: Category[];
+  isAnonymous: boolean;
+  profileVisibility?: ProfileVisibility;
+  themePreference?: ThemePreference;
+  isGuest: boolean;
   joinedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   experiencesShared: number;
   solutionsTested: number;
   peopleHelped: number;
   savedSolutionIds: string[];
+  savedExperienceIds?: string[];
+  notificationPreferences?: NotificationPreferences;
   aiWritingAssistEnabled?: boolean;
 }
 
-export type WritingSuggestionType = 'typo_grammar' | 'alternative_wording' | 'clarity';
+export type WritingSuggestionType = 'typo_grammar' | 'alternative_wording' | 'clarity' | 'concise' | 'professional';
+
+export type WritingAssistMode = 'realtime' | 'polish' | 'concise' | 'professional' | 'grammar';
 
 export interface WritingSuggestion {
   id: string;
@@ -164,6 +217,7 @@ export interface WritingAssistResponse {
   hasSuggestions: boolean;
   suggestions: WritingSuggestion[];
   cleanText?: string;
+  analysisSummary?: string;
 }
 
 export interface PlatformStats {

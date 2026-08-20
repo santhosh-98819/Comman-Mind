@@ -64,11 +64,12 @@ export const Tooltip: React.FC<TooltipProps> = ({
 
       {isVisible && (
         <div
-          className={`absolute z-50 px-2.5 py-1.5 text-xs font-medium text-slate-100 bg-slate-900/95 backdrop-blur-xs rounded-lg shadow-xl whitespace-normal max-w-xs pointer-events-none transition-all duration-150 animate-fadeIn border border-slate-700/60 leading-tight ${positionClasses[position]}`}
+          className={`absolute z-50 px-2.5 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs rounded-lg shadow-xl whitespace-normal max-w-xs pointer-events-none transition-all duration-150 animate-fadeIn border border-slate-200 dark:border-slate-700/80 leading-tight ${positionClasses[position]}`}
           style={{ width: 'max-content', maxWidth: '240px' }}
         >
           {content}
-          <div className={`absolute w-0 h-0 ${arrowClasses[position]}`} />
+          <div className={`absolute w-0 h-0 dark:hidden ${arrowClasses[position]}`} />
+          <div className={`absolute w-0 h-0 hidden dark:block ${arrowClasses[position].replace(/border-(t|b|l|r)-slate-900/g, 'border-$1-slate-800')}`} />
         </div>
       )}
     </div>

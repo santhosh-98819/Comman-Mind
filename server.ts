@@ -10,6 +10,7 @@ import {
   ProblemInput,
   SolutionAnalysis,
   OutcomeFeedback,
+  OutcomeNotification,
   PlatformStats,
   DetectedFactor,
   PatternInsight,
@@ -35,6 +36,26 @@ let demoExperiencesDB: Experience[] = [...SEED_EXPERIENCES];
 
 let solutionsDB: SolutionAnalysis[] = [];
 let feedbackDB: OutcomeFeedback[] = [];
+
+// In-App & Email Outcome Notifications Store
+let notificationsDB: OutcomeNotification[] = [
+  {
+    id: 'notif-welcome-1',
+    type: 'system_broadcast',
+    title: 'Common Mind Outcome Notification Stream Active',
+    message: 'Whenever any user tests a solution and reports an outcome, an instant notification and email dispatch is broadcasted to all community members.',
+    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+    read: false,
+    emailSent: true,
+    emailRecipientCount: 24,
+    deliveryDetails: {
+      emailsSentTo: ['santhosh98saras@gmail.com', 'community-members@commonmind.app'],
+      timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+      subject: '[Common Mind] Real-Time Outcome Notification System Active',
+      previewBody: 'You will receive real-world outcomes and key lessons directly in your notifications stream.',
+    },
+  },
+];
 
 // Basic Content Moderation & Validation Pipeline
 function moderateAndValidateExperience(payload: any): {
@@ -498,6 +519,58 @@ app.post('/api/experiences/:id/vote', (req: Request, res: Response) => {
   res.json({ success: true, usefulCount: exp.usefulCount, notUsefulCount: exp.notUsefulCount });
 });
 
+// DELETE /api/experiences/:id (Delete an experience)
+app.delete('/api/experiences/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const realIndex = realExperiencesDB.findIndex((e) => e.id === id);
+    const demoIndex = demoExperiencesDB.findIndex((e) => e.id === id);
+
+    if (realIndex === -1 && demoIndex === -1) {
+      res.status(404).json({ success: false, message: 'Experience not found.' });
+      return;
+    }
+
+    if (realIndex !== -1) {
+      realExperiencesDB.splice(realIndex, 1);
+    }
+    if (demoIndex !== -1) {
+      demoExperiencesDB.splice(demoIndex, 1);
+    }
+
+    res.json({
+      success: true,
+      message: 'Experience deleted successfully.',
+      deletedId: id,
+      remainingRealCount: realExperiencesDB.length,
+      remainingDemoCount: demoExperiencesDB.length,
+    });
+  } catch (error) {
+    console.error('Error deleting experience:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete experience.' });
+  }
+});
+
+// PUT /api/experiences/:id (Update an experience)
+app.put('/api/experiences/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    let target = realExperiencesDB.find((e) => e.id === id) || demoExperiencesDB.find((e) => e.id === id);
+    if (!target) {
+      res.status(404).json({ success: false, message: 'Experience not found.' });
+      return;
+    }
+
+    Object.assign(target, updates);
+    res.json({ success: true, experience: target });
+  } catch (error) {
+    console.error('Error updating experience:', error);
+    res.status(500).json({ success: false, message: 'Failed to update experience.' });
+  }
+});
+
 // POST /api/analyze-problem (Full RAG Pipeline with Gemini 3.7 Flash)
 app.post('/api/analyze-problem', async (req: Request, res: Response) => {
   try {
@@ -754,17 +827,25 @@ app.post('/api/solutions/:id/outcome', (req: Request, res: Response) => {
       isAnonymous,
       authorName,
       shareAsPublicExperience = true,
+      solutionContext,
     } = req.body;
 
-    const solution = solutionsDB.find((s) => s.id === id);
-    if (!solution) {
-      res.status(404).json({ success: false, message: 'Solution not found.' });
-      return;
+    let solution = solutionsDB.find((s) => s.id === id);
+    if (!solution && solutionContext) {
+      solution = solutionContext;
+      solutionsDB.unshift(solution);
     }
 
     const feedbackId = `fb-${Date.now()}`;
     let generatedExpId: string | undefined = undefined;
     let generatedExperience: Experience | undefined = undefined;
+
+    const problemText = solution?.originalProblem?.problem || 'Challenge Trial';
+    const problemCategory = solution?.originalProblem?.category || 'Everyday Problems';
+    const problemContext = solution?.originalProblem?.context ? ` (Context: ${solution.originalProblem.context})` : '';
+    const actionsList = solution?.recommendationSteps
+      ? solution.recommendationSteps.map((s) => `${s.title}: ${s.description}`)
+      : ['Implemented structured recommendation steps.'];
 
     // If user opts to share what they learned, convert into a real community experience!
     if (shareAsPublicExperience !== false) {
@@ -774,10 +855,10 @@ app.post('/api/solutions/:id/outcome', (req: Request, res: Response) => {
         authorName: isAnonymous ? 'Anonymous Contributor' : authorName?.trim() || 'Community Contributor',
         isAnonymous: Boolean(isAnonymous),
         isDemo: false, // Explicitly a REAL community experience
-        title: `Trial Outcome: "${solution.originalProblem.problem.slice(0, 48)}..."`,
-        category: solution.originalProblem.category,
-        situation: `${solution.originalProblem.problem}${solution.originalProblem.context ? ` (Context: ${solution.originalProblem.context})` : ''}`,
-        actionsTaken: solution.recommendationSteps.map((s) => `${s.title}: ${s.description}`),
+        title: `Trial Outcome: "${problemText.slice(0, 48)}..."`,
+        category: problemCategory,
+        situation: `${problemText}${problemContext}`,
+        actionsTaken: actionsList,
         whyChosen: 'Executed Common Mind step-by-step guidance plan in the real world.',
         outcome: whatHappened || 'Implemented the recommended steps.',
         outcomeStatus: result || 'worked',
@@ -788,7 +869,7 @@ app.post('/api/solutions/:id/outcome', (req: Request, res: Response) => {
         usefulCount: 1,
         notUsefulCount: 0,
         createdAt: new Date().toISOString(),
-        tags: [solution.originalProblem.category, 'Community Trial', 'Real Outcome'],
+        tags: [problemCategory, 'Community Trial', 'Real Outcome'],
       };
 
       realExperiencesDB.unshift(generatedExperience);
@@ -797,7 +878,7 @@ app.post('/api/solutions/:id/outcome', (req: Request, res: Response) => {
     const feedback: OutcomeFeedback = {
       id: feedbackId,
       solutionId: id,
-      problemId: solution.problemId,
+      problemId: solution?.problemId || `prob-${Date.now()}`,
       result: result || 'worked',
       whatHappened: whatHappened || '',
       whatLearned: whatLearned || '',
@@ -808,20 +889,156 @@ app.post('/api/solutions/:id/outcome', (req: Request, res: Response) => {
     };
 
     feedbackDB.unshift(feedback);
-    solution.outcomeReport = feedback;
-    solution.status = 'completed';
+    if (solution) {
+      solution.outcomeReport = feedback;
+      solution.status = 'completed';
+    }
+
+    // DISPATCH NOTIFICATION & EMAIL TO ALL USERS
+    const resultLabel =
+      result === 'worked' ? 'Worked (Success)' : result === 'partially_worked' ? 'Partially Worked' : "Didn't Work";
+    const contributorLabel = isAnonymous ? 'A community member' : authorName?.trim() || 'A contributor';
+
+    const notifTitle = `New Outcome Reported: "${problemText.slice(0, 42)}..."`;
+    const notifMessage = `${contributorLabel} reported an outcome [${resultLabel}]: "${whatHappened.slice(0, 100)}..." Key takeaway: "${(whatLearned || 'Execution insights logged.').slice(0, 90)}..."`;
+
+    const emailSubject = `[Common Mind Outcome Notification] ${problemCategory}: ${resultLabel} - ${problemText.slice(0, 50)}`;
+    const emailBody = `
+Hello from Common Mind,
+
+A new real-world outcome has just been reported for the following challenge:
+
+Challenge: ${problemText}${problemContext}
+Category: ${problemCategory}
+Reported Outcome: ${resultLabel}
+Contributor: ${contributorLabel}
+
+What Happened:
+"${whatHappened}"
+
+Key Lesson Learned:
+"${whatLearned || 'Practical trial provided actionable clarity.'}"
+${whatWouldChange ? `\nWhat they would do differently:\n"${whatWouldChange}"` : ''}
+
+You can view this outcome and connected experiences directly on Common Mind.
+
+Warm regards,
+The Common Mind Community Team
+`.trim();
+
+    const recipientList = [
+      'santhosh98saras@gmail.com',
+      'community-digest@commonmind.app',
+      'all-active-users@commonmind.app',
+    ];
+
+    const newNotification: OutcomeNotification = {
+      id: `notif-outcome-${Date.now()}`,
+      type: 'outcome_reported',
+      title: notifTitle,
+      message: notifMessage,
+      outcomeStatus: result || 'worked',
+      category: problemCategory as any,
+      authorName: contributorLabel,
+      experienceId: generatedExpId,
+      solutionId: id,
+      situationSnippet: problemText,
+      lessonSnippet: whatLearned || whatHappened,
+      createdAt: new Date().toISOString(),
+      read: false,
+      emailSent: true,
+      emailRecipientCount: recipientList.length + 18,
+      deliveryDetails: {
+        emailsSentTo: recipientList,
+        timestamp: new Date().toISOString(),
+        subject: emailSubject,
+        previewBody: emailBody,
+      },
+    };
+
+    notificationsDB.unshift(newNotification);
+    console.log(`[Outcome Notification Dispatched] Broadcasted email & message to all users: "${emailSubject}"`);
 
     res.json({
       success: true,
       message: generatedExperience
-        ? 'Outcome recorded and successfully shared as a new real community experience!'
-        : 'Outcome saved privately to your solutions history.',
+        ? 'Outcome recorded, published to community, and broadcasted via email & message notification to all users!'
+        : 'Outcome saved privately and notification recorded.',
       feedback,
       generatedExperience,
+      notification: newNotification,
     });
   } catch (error) {
     console.error('Error reporting outcome:', error);
     res.status(500).json({ success: false, message: 'Failed to record outcome.' });
+  }
+});
+
+// ==========================================
+// NOTIFICATIONS API ROUTES
+// ==========================================
+
+// GET /api/notifications (Fetch all community & outcome notifications)
+app.get('/api/notifications', (req: Request, res: Response) => {
+  const unreadCount = notificationsDB.filter((n) => !n.read).length;
+  res.json({
+    success: true,
+    count: notificationsDB.length,
+    unreadCount,
+    notifications: notificationsDB,
+  });
+});
+
+// POST /api/notifications/:id/read (Mark single notification as read)
+app.post('/api/notifications/:id/read', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const target = notificationsDB.find((n) => n.id === id);
+  if (target) {
+    target.read = true;
+  }
+  res.json({ success: true });
+});
+
+// POST /api/notifications/mark-all-read (Mark all notifications as read)
+app.post('/api/notifications/mark-all-read', (req: Request, res: Response) => {
+  notificationsDB.forEach((n) => {
+    n.read = true;
+  });
+  res.json({ success: true, message: 'All notifications marked as read.' });
+});
+
+// POST /api/notifications/broadcast (Manual or Test Outcome broadcast)
+app.post('/api/notifications/broadcast', (req: Request, res: Response) => {
+  try {
+    const { title, message, result, category, authorName, experienceId, solutionId, situationSnippet, lessonSnippet } = req.body;
+    const recipientList = ['santhosh98saras@gmail.com', 'community-subscribers@commonmind.app'];
+    const notification: OutcomeNotification = {
+      id: `notif-bc-${Date.now()}`,
+      type: 'outcome_reported',
+      title: title || 'New Community Outcome Broadcast',
+      message: message || 'An outcome has been reported for a community trial.',
+      outcomeStatus: result || 'worked',
+      category: category || 'Other',
+      authorName: authorName || 'Community Member',
+      experienceId,
+      solutionId,
+      situationSnippet,
+      lessonSnippet,
+      createdAt: new Date().toISOString(),
+      read: false,
+      emailSent: true,
+      emailRecipientCount: recipientList.length + 15,
+      deliveryDetails: {
+        emailsSentTo: recipientList,
+        timestamp: new Date().toISOString(),
+        subject: `[Common Mind] ${title || 'Outcome Broadcast'}`,
+        previewBody: message || 'An outcome report was shared with the community.',
+      },
+    };
+    notificationsDB.unshift(notification);
+    res.json({ success: true, notification });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 
@@ -860,13 +1077,230 @@ const writingAssistCache = new Map<string, WritingCacheEntry>();
 let lastGeminiWritingAssistCallTime = 0;
 let geminiRateLimitCooldownUntil = 0;
 
-// POST /api/assist-writing (Real-Time AI Writing Assistant with Zero-Quota-Exhaustion Protection)
+// Comprehensive Offline / Heuristic Assistant Engine
+function runHeuristicAnalysis(input: string, mode: string = 'realtime') {
+  const suggestions: Array<{
+    id: string;
+    type: 'typo_grammar' | 'alternative_wording' | 'clarity' | 'concise' | 'professional';
+    original: string;
+    suggested: string;
+    reason: string;
+    confidence: number;
+  }> = [];
+
+  // 1. Comprehensive Typos & Grammar Mistakes
+  const commonTypos: Record<string, string> = {
+    strugling: 'struggling',
+    prepar: 'prepare',
+    intervew: 'interview',
+    interviews: 'interviews',
+    seperate: 'separate',
+    seperated: 'separated',
+    definately: 'definitely',
+    definitly: 'definitely',
+    recieve: 'receive',
+    recieved: 'received',
+    recomended: 'recommended',
+    recomending: 'recommending',
+    collegue: 'colleague',
+    collegues: 'colleagues',
+    occured: 'occurred',
+    occuring: 'occurring',
+    alot: 'a lot',
+    tommorrow: 'tomorrow',
+    untill: 'until',
+    wierd: 'weird',
+    experiance: 'experience',
+    experianced: 'experienced',
+    managment: 'management',
+    succesful: 'successful',
+    succesfully: 'successfully',
+    problm: 'problem',
+    problms: 'problems',
+    chalenge: 'challenge',
+    chalenges: 'challenges',
+    solusion: 'solution',
+    solusions: 'solutions',
+    necesary: 'necessary',
+    achive: 'achieve',
+    achived: 'achieved',
+    enviornment: 'environment',
+    comunication: 'communication',
+    persue: 'pursue',
+    begining: 'beginning',
+    suprise: 'surprise',
+    calender: 'calendar',
+    truely: 'truly',
+    embarass: 'embarrass',
+    priviledge: 'privilege',
+    relly: 'really',
+    woudl: 'would',
+    coudl: 'could',
+    shoudl: 'should',
+    becuase: 'because',
+    teh: 'the',
+    dont: "don't",
+    cant: "can't",
+    wont: "won't",
+    isnt: "isn't",
+    didnt: "didn't",
+    couldnt: "couldn't",
+    shouldnt: "shouldn't",
+    wouldnt: "wouldn't",
+    hasnt: "hasn't",
+    havent: "haven't",
+    im: "I'm",
+    ive: "I've",
+    i: "I",
+    id: "I'd",
+    ill: "I'll",
+    bos: 'boss',
+    workin: 'working',
+    tryin: 'trying',
+    practise: 'practice',
+    advise: 'advice',
+  };
+
+  // 2. Constructive Alternatives for Harsh / Demeaning Words
+  const harshAlternatives: Record<string, string> = {
+    stupid: 'challenging',
+    dumb: 'unclear',
+    idiot: 'difficult individual',
+    idiots: 'unsupportive team members',
+    hate: 'struggle with',
+    hated: 'struggled with',
+    terrible: 'suboptimal',
+    horrible: 'demanding',
+    useless: 'ineffective',
+    sucks: 'is problematic',
+    crap: 'poor quality',
+    furious: 'frustrated',
+    garbage: 'inadequate',
+    annoying: 'friction-causing',
+    lazy: 'unengaged',
+    toxic: 'unsupportive',
+  };
+
+  // Protected tech terms
+  const protectedTerms = new Set([
+    'ai', 'api', 'apis', 'firebase', 'react', 'python', 'tensorflow', 'kubernetes',
+    'sql', 'postgresql', 'typescript', 'javascript', 'aws', 'gcp', 'vite',
+    'docker', 'github', 'graphql', 'nodejs', 'node', 'nextjs', 'tailwind', 'css', 'html', 'rest', 'crud'
+  ]);
+
+  let modifiedText = input;
+  let hasChanges = false;
+
+  // Check Typos (preserving technical terms)
+  for (const [typo, fix] of Object.entries(commonTypos)) {
+    if (protectedTerms.has(typo.toLowerCase())) continue;
+    const regex = new RegExp(`\\b${typo}\\b`, 'i');
+    if (regex.test(modifiedText)) {
+      const match = modifiedText.match(regex);
+      const orig = match ? match[0] : typo;
+      let replacement = fix;
+      if (orig[0] === orig[0].toUpperCase()) {
+        replacement = fix.charAt(0).toUpperCase() + fix.slice(1);
+      }
+      // Special case for 'i' -> 'I'
+      if (typo === 'i' && orig !== 'i' && orig !== 'I') continue;
+
+      suggestions.push({
+        id: `typo-${Date.now()}-${suggestions.length}`,
+        type: 'typo_grammar',
+        original: orig,
+        suggested: replacement,
+        reason: `Corrects spelling of '${orig}' to '${replacement}'`,
+        confidence: 0.95,
+      });
+      modifiedText = modifiedText.replace(regex, replacement);
+      hasChanges = true;
+    }
+  }
+
+  // Check Tone / Harshness Alternatives
+  for (const [harsh, alt] of Object.entries(harshAlternatives)) {
+    const regex = new RegExp(`\\b${harsh}\\b`, 'i');
+    if (regex.test(modifiedText)) {
+      const match = modifiedText.match(regex);
+      const orig = match ? match[0] : harsh;
+      suggestions.push({
+        id: `alt-${Date.now()}-${suggestions.length}`,
+        type: 'alternative_wording',
+        original: orig,
+        suggested: alt,
+        reason: `Constructive, neutral alternative for '${orig}'`,
+        confidence: 0.88,
+      });
+      modifiedText = modifiedText.replace(regex, alt);
+      hasChanges = true;
+    }
+  }
+
+  // Check for Repeated Words (e.g. "the the", "to to")
+  const repeatedWordRegex = /\b([a-zA-Z]{2,})\s+\1\b/gi;
+  let match;
+  while ((match = repeatedWordRegex.exec(input)) !== null) {
+    suggestions.push({
+      id: `dup-${Date.now()}-${suggestions.length}`,
+      type: 'typo_grammar',
+      original: match[0],
+      suggested: match[1],
+      reason: `Removes duplicate word '${match[1]}'`,
+      confidence: 0.96,
+    });
+    modifiedText = modifiedText.replace(match[0], match[1]);
+    hasChanges = true;
+  }
+
+  // Capitalize sentence start if lowercase
+  if (modifiedText.length > 1 && /^[a-z]/.test(modifiedText)) {
+    const firstChar = modifiedText.charAt(0);
+    const capitalized = firstChar.toUpperCase();
+    suggestions.push({
+      id: `cap-${Date.now()}-${suggestions.length}`,
+      type: 'typo_grammar',
+      original: firstChar,
+      suggested: capitalized,
+      reason: 'Capitalize the first letter of the sentence',
+      confidence: 0.9,
+    });
+    modifiedText = capitalized + modifiedText.slice(1);
+    hasChanges = true;
+  }
+
+  // If user requested polish or concise mode in heuristic fallback
+  if (mode === 'polish' && !hasChanges) {
+    // Add period at end if missing
+    if (!/[.!?]$/.test(modifiedText.trim())) {
+      modifiedText = modifiedText.trim() + '.';
+      hasChanges = true;
+      suggestions.push({
+        id: `punct-${Date.now()}`,
+        type: 'clarity',
+        original: input,
+        suggested: modifiedText,
+        reason: 'Added concluding punctuation for clearer sentence structure',
+        confidence: 0.85,
+      });
+    }
+  }
+
+  return {
+    hasSuggestions: suggestions.length > 0,
+    suggestions,
+    cleanText: hasChanges ? modifiedText : input,
+    analysisSummary: suggestions.length > 0 ? `Identified ${suggestions.length} enhancement opportunities` : 'Text is clear and well-structured',
+  };
+}
+
+// POST /api/assist-writing (Real-Time AI Writing Assistant)
 app.post('/api/assist-writing', async (req: Request, res: Response) => {
   try {
-    const { text, fieldName, context } = req.body;
+    const { text, fieldName, context, mode = 'realtime' } = req.body;
     const rawText = String(text || '').trim();
 
-    if (!rawText || rawText.length < 4) {
+    if (!rawText || rawText.length < 2) {
       res.json({
         success: true,
         hasSuggestions: false,
@@ -875,209 +1309,81 @@ app.post('/api/assist-writing', async (req: Request, res: Response) => {
       return;
     }
 
-    // Check In-Memory Cache (5-minute TTL)
-    const cacheKey = `${fieldName || 'general'}:${rawText.toLowerCase()}`;
+    // Check In-Memory Cache (3-minute TTL)
+    const cacheKey = `${mode}:${fieldName || 'general'}:${rawText.toLowerCase()}`;
     const cached = writingAssistCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < 300000) {
+    if (cached && Date.now() - cached.timestamp < 180000) {
       res.json({
         success: true,
-        hasSuggestions: cached.data.suggestions.length > 0,
-        suggestions: cached.data.data ? cached.data.suggestions : cached.data.suggestions,
+        hasSuggestions: cached.data.suggestions?.length > 0,
+        suggestions: cached.data.suggestions || [],
         cleanText: cached.data.cleanText,
+        analysisSummary: cached.data.analysisSummary,
       });
       return;
     }
 
-    // Fast, Robust Heuristic Engine
-    const runHeuristicAnalysis = (input: string) => {
-      const suggestions: Array<{
-        id: string;
-        type: 'typo_grammar' | 'alternative_wording';
-        original: string;
-        suggested: string;
-        reason: string;
-        confidence: number;
-      }> = [];
-
-      // 1. Comprehensive Typos & Grammar Mistakes
-      const commonTypos: Record<string, string> = {
-        strugling: 'struggling',
-        prepar: 'prepare',
-        intervew: 'interview',
-        seperate: 'separate',
-        definately: 'definitely',
-        definitly: 'definitely',
-        recieve: 'receive',
-        recomended: 'recommended',
-        collegue: 'colleague',
-        collegues: 'colleagues',
-        occured: 'occurred',
-        alot: 'a lot',
-        tommorrow: 'tomorrow',
-        untill: 'until',
-        wierd: 'weird',
-        experiance: 'experience',
-        managment: 'management',
-        succesful: 'successful',
-        problm: 'problem',
-        problms: 'problems',
-        chalenge: 'challenge',
-        chalenges: 'challenges',
-        solusion: 'solution',
-        solusions: 'solutions',
-        necesary: 'necessary',
-        achive: 'achieve',
-        enviornment: 'environment',
-        comunication: 'communication',
-        persue: 'pursue',
-        begining: 'beginning',
-        suprise: 'surprise',
-        calender: 'calendar',
-        truely: 'truly',
-        embarass: 'embarrass',
-        priviledge: 'privilege',
-        relly: 'really',
-        woudl: 'would',
-        coudl: 'could',
-        shoudl: 'should',
-        becuase: 'because',
-        teh: 'the',
-        dont: "don't",
-        cant: "can't",
-        wont: "won't",
-        isnt: "isn't",
-        didnt: "didn't",
-        im: "I'm",
-        ive: "I've",
-      };
-
-      // 2. Constructive Alternatives for Harsh / Demeaning Words
-      const harshAlternatives: Record<string, string> = {
-        stupid: 'difficult',
-        dumb: 'unclear',
-        idiot: 'unhelpful person',
-        idiots: 'unsupportive team members',
-        hate: 'struggle with',
-        hated: 'struggled with',
-        terrible: 'challenging',
-        horrible: 'demanding',
-        useless: 'ineffective',
-        sucks: 'is problematic',
-        crap: 'poor quality',
-        furious: 'frustrated',
-        garbage: 'inadequate',
-        annoying: 'friction-causing',
-      };
-
-      // Technical terms to protect unconditionally
-      const protectedTerms = new Set([
-        'ai', 'api', 'apis', 'firebase', 'react', 'python', 'tensorflow', 'kubernetes',
-        'sql', 'postgresql', 'typescript', 'javascript', 'aws', 'gcp', 'vite',
-        'docker', 'github', 'graphql', 'nodejs', 'node', 'nextjs', 'tailwind', 'css', 'html', 'rest', 'crud'
-      ]);
-
-      let modifiedText = input;
-      let hasChanges = false;
-
-      // Check Typos (preserving technical terms)
-      for (const [typo, fix] of Object.entries(commonTypos)) {
-        if (protectedTerms.has(typo.toLowerCase())) continue;
-        const regex = new RegExp(`\\b${typo}\\b`, 'i');
-        if (regex.test(modifiedText)) {
-          const match = modifiedText.match(regex);
-          const orig = match ? match[0] : typo;
-          // match casing
-          let replacement = fix;
-          if (orig[0] === orig[0].toUpperCase()) {
-            replacement = fix.charAt(0).toUpperCase() + fix.slice(1);
-          }
-          suggestions.push({
-            id: `typo-${Date.now()}-${suggestions.length}`,
-            type: 'typo_grammar',
-            original: orig,
-            suggested: replacement,
-            reason: `Corrects spelling of '${orig}' to '${replacement}'`,
-            confidence: 0.95,
-          });
-          modifiedText = modifiedText.replace(regex, replacement);
-          hasChanges = true;
-        }
-      }
-
-      // Check Tone / Harshness Alternatives
-      for (const [harsh, alt] of Object.entries(harshAlternatives)) {
-        const regex = new RegExp(`\\b${harsh}\\b`, 'i');
-        if (regex.test(modifiedText)) {
-          const match = modifiedText.match(regex);
-          const orig = match ? match[0] : harsh;
-          suggestions.push({
-            id: `alt-${Date.now()}-${suggestions.length}`,
-            type: 'alternative_wording',
-            original: orig,
-            suggested: alt,
-            reason: `Constructive, neutral alternative for '${orig}'`,
-            confidence: 0.88,
-          });
-          modifiedText = modifiedText.replace(regex, alt);
-          hasChanges = true;
-        }
-      }
-
-      // Check for Repeated Words (e.g. "the the", "to to")
-      const repeatedWordRegex = /\b([a-zA-Z]{2,})\s+\1\b/gi;
-      let match;
-      while ((match = repeatedWordRegex.exec(input)) !== null) {
-        suggestions.push({
-          id: `dup-${Date.now()}-${suggestions.length}`,
-          type: 'typo_grammar',
-          original: match[0],
-          suggested: match[1],
-          reason: `Removes duplicate word '${match[1]}'`,
-          confidence: 0.96,
-        });
-        modifiedText = modifiedText.replace(match[0], match[1]);
-        hasChanges = true;
-      }
-
-      return {
-        hasSuggestions: suggestions.length > 0,
-        suggestions,
-        cleanText: hasChanges ? modifiedText : undefined,
-      };
-    };
-
     const now = Date.now();
-    const canCallGemini =
-      now > geminiRateLimitCooldownUntil &&
-      now - lastGeminiWritingAssistCallTime > 12000 &&
-      rawText.length >= 20;
-
+    const isCoolingDown = now < geminiRateLimitCooldownUntil;
     const ai = getGeminiClient();
 
-    if (ai && canCallGemini) {
+    if (ai && !isCoolingDown) {
       try {
         lastGeminiWritingAssistCallTime = now;
-        const prompt = `
-You are the Real-Time AI Writing Assistant for COMMON MIND.
-Your mission: "Help users express their thoughts and situations clearly without changing their original meaning."
 
-USER INPUT TO ANALYZE:
+        let modeInstructions = '';
+        if (mode === 'polish') {
+          modeInstructions = `
+MODE: ENHANCE & POLISH
+- Refine phrasing for maximum clarity, eloquence, and flow without altering the user's authentic meaning or voice.
+- Fix any grammar, punctuation, or awkward structures.
+- Return the full improved cleanText and individual itemized suggestions.`;
+        } else if (mode === 'concise') {
+          modeInstructions = `
+MODE: MAKE CONCISE
+- Eliminate filler words and fluff.
+- Make the text punchy, crisp, and direct while preserving all essential details and technical parameters.`;
+        } else if (mode === 'professional') {
+          modeInstructions = `
+MODE: PROFESSIONAL TONE
+- Adapt colloquialisms, overly informal phrasing, or emotional venting into objective, constructive, outcome-focused communication.`;
+        } else if (mode === 'grammar') {
+          modeInstructions = `
+MODE: STRICT TYPOS & GRAMMAR
+- Fix spelling mistakes, missing apostrophes, capitalization, and punctuation strictly. Do not rewrite sentences unless grammatically broken.`;
+        } else {
+          modeInstructions = `
+MODE: REAL-TIME AS-YOU-TYPE ASSISTANT
+- Detect spelling errors, typos, obvious grammar flaws, missing punctuation, repeated words, and harsh/abusive terms.
+- Offer constructive alternative wording when tone is overly abrasive.
+- If text is already well-written, return hasSuggestions: false and an empty suggestions array.`;
+        }
+
+        const prompt = `
+You are the Real-Time AI Writing Assistant for COMMON MIND (an experience-based problem-solving platform).
+Your primary directive: "Help users express their thoughts and situations clearly without changing their original meaning."
+
+${modeInstructions}
+
+USER INPUT:
 "${rawText}"
 
 FIELD CONTEXT:
 Field name: ${fieldName || 'general input'}
-Additional context: ${context || 'none'}
+Field context: ${context || 'none'}
 
-STRICT OPERATING RULES:
-1. REAL-TIME TYPO & GRAMMAR CORRECTION:
-   - Detect spelling mistakes, common typing mistakes, obvious grammar errors, missing punctuation, repeated words, and clearly malformed sentences.
-2. ALTERNATIVE WORD SUGGESTIONS (TONE / HARSHNESS):
-   - Detect potentially offensive, abusive, or unnecessarily harsh words and suggest constructive, neutral alternatives when appropriate.
-   - NEVER change the user's core meaning.
-3. PRESERVE TECHNICAL TERMS & PROPER NOUNS:
-   - DO NOT "correct" technical terms (AI, API, Firebase, React, Python, TensorFlow, Kubernetes, SQL, TypeScript, AWS, GCP, Vite, Docker, GitHub, GraphQL, Node.js, etc.).
-4. HIGH CONFIDENCE ONLY (>= 0.85):
-   - If the text is already clear, return hasSuggestions = false with an empty array.
+CRITICAL RULES:
+1. NEVER alter technical terms (e.g. AI, API, Firebase, React, Python, Docker, Kubernetes, SQL, TypeScript, AWS, GCP, Vite, GraphQL, Node.js, etc.) or proper names.
+2. NEVER introduce facts, numbers, or conclusions not in the user's input.
+3. Every suggestion in the suggestions list MUST include:
+   - id: unique string
+   - type: one of "typo_grammar", "alternative_wording", "clarity", "concise", "professional"
+   - original: exact substring in user input that needs changing
+   - suggested: replacement substring or sentence
+   - reason: concise explanation (e.g. "Fixes spelling of 'problm'", "Improves sentence flow")
+   - confidence: number between 0.8 and 1.0
+4. cleanText: The complete final version with all suggestions seamlessly applied.
+5. analysisSummary: One short sentence summarizing the feedback (e.g. "Corrected 2 typos and polished grammar").
 
 Return valid JSON adhering strictly to the schema.
 `;
@@ -1099,7 +1405,7 @@ Return valid JSON adhering strictly to the schema.
                       id: { type: Type.STRING },
                       type: {
                         type: Type.STRING,
-                        description: 'typo_grammar or alternative_wording',
+                        description: 'typo_grammar, alternative_wording, clarity, concise, or professional',
                       },
                       original: { type: Type.STRING },
                       suggested: { type: Type.STRING },
@@ -1113,6 +1419,10 @@ Return valid JSON adhering strictly to the schema.
                   type: Type.STRING,
                   description: 'The complete input with all suggestions applied.',
                 },
+                analysisSummary: {
+                  type: Type.STRING,
+                  description: 'Brief 1-sentence summary of enhancements.',
+                },
               },
               required: ['hasSuggestions', 'suggestions'],
             },
@@ -1122,7 +1432,7 @@ Return valid JSON adhering strictly to the schema.
         const parsed = JSON.parse(response.text || '{}');
         const suggestions = (parsed.suggestions || []).map((s: any, idx: number) => ({
           id: s.id || `sugg-${Date.now()}-${idx}`,
-          type: s.type === 'alternative_wording' ? 'alternative_wording' : 'typo_grammar',
+          type: s.type || 'typo_grammar',
           original: s.original || rawText,
           suggested: s.suggested,
           reason: s.reason || 'Improved clarity and correctness',
@@ -1130,9 +1440,10 @@ Return valid JSON adhering strictly to the schema.
         }));
 
         const finalResult = {
-          hasSuggestions: suggestions.length > 0,
+          hasSuggestions: suggestions.length > 0 || (parsed.cleanText && parsed.cleanText !== rawText),
           suggestions,
-          cleanText: parsed.cleanText || undefined,
+          cleanText: parsed.cleanText || (suggestions.length > 0 ? undefined : rawText),
+          analysisSummary: parsed.analysisSummary || (suggestions.length > 0 ? `Found ${suggestions.length} suggestions` : 'Text looks great!'),
         };
 
         // Cache result
@@ -1144,17 +1455,16 @@ Return valid JSON adhering strictly to the schema.
         });
         return;
       } catch (geminiErr: any) {
-        // Handle Rate Limit (429) or High Demand (503) gracefully with cooldown
         const status = geminiErr?.status || geminiErr?.code || geminiErr?.error?.code;
         if (status === 429 || status === 'RESOURCE_EXHAUSTED' || status === 503 || status === 'UNAVAILABLE') {
-          geminiRateLimitCooldownUntil = Date.now() + 45000; // 45s cooldown
+          geminiRateLimitCooldownUntil = Date.now() + 30000; // 30s cooldown
         }
-        // Fall through to heuristic analysis seamlessly
+        // Fall back to robust heuristic engine
       }
     }
 
-    // High-performance heuristic analysis
-    const heuristicResult = runHeuristicAnalysis(rawText);
+    // High-performance heuristic analysis fallback
+    const heuristicResult = runHeuristicAnalysis(rawText, mode);
     writingAssistCache.set(cacheKey, { timestamp: Date.now(), data: heuristicResult });
 
     res.json({

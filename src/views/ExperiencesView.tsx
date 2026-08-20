@@ -41,6 +41,15 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
     setLoading(false);
   };
 
+  const handleDeleteExperience = (deletedId: string) => {
+    setExperiences((prev) => prev.filter((e) => e.id !== deletedId));
+    if (viewMode === 'community') {
+      setCounts((prev) => ({ ...prev, real: Math.max(0, prev.real - 1) }));
+    } else {
+      setCounts((prev) => ({ ...prev, demo: Math.max(0, prev.demo - 1) }));
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [selectedCategory, selectedOutcome, sortBy, viewMode]);
@@ -263,7 +272,13 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {experiences.map((exp) => (
-            <ExperienceCard key={exp.id} experience={exp} showRelevance={false} />
+            <ExperienceCard
+              key={exp.id}
+              experience={exp}
+              showRelevance={false}
+              canDelete={true}
+              onDelete={handleDeleteExperience}
+            />
           ))}
         </div>
       )}

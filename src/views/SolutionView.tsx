@@ -6,7 +6,7 @@ import { PatternsPanel } from '../components/PatternsPanel';
 import { SectionTag } from '../components/Badge';
 import { ReportOutcomeModal } from '../components/ReportOutcomeModal';
 import { Tooltip } from '../components/Tooltip';
-import { saveSolutionLocally, saveActiveSolution } from '../services/api';
+import { saveSolutionLocally, saveActiveSolution, isSolutionSaved, updateSolutionStatus } from '../services/api';
 import {
   Sparkles,
   Bookmark,
@@ -22,6 +22,7 @@ import {
   Flame,
   CheckSquare,
   FileCheck2,
+  PlayCircle,
 } from 'lucide-react';
 import { ViewMode } from '../App';
 
@@ -32,14 +33,31 @@ interface SolutionViewProps {
 }
 
 export const SolutionView: React.FC<SolutionViewProps> = ({ solution, onBack, onNavigate }) => {
-  const [isSaved, setIsSaved] = useState(false);
-  const [isTesting, setIsTesting] = useState(solution.status === 'testing' || solution.status === 'in_progress');
+  const [isSaved, setIsSaved] = useState(() => isSolutionSaved(solution.id));
+  const [currentStatus, setCurrentStatus] = useState<string>(() => solution.status || (solution.outcomeReport ? 'completed' : 'in_progress'));
+  const [currentOutcome, setCurrentOutcome] = useState(solution.outcomeReport);
   const [outcomeModalOpen, setOutcomeModalOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
 
+  const isCompleted = currentStatus === 'completed' || !!currentOutcome;
+
   const handleToggleSave = () => {
-    const bookmarked = saveSolutionLocally(solution);
+    const bookmarked = saveSolutionLocally({
+      ...solution,
+      status: currentStatus as any,
+      outcomeReport: currentOutcome,
+    });
     setIsSaved(bookmarked);
+  };
+
+  const handleToggleStatus = () => {
+    const nextStatus = currentStatus === 'testing' || currentStatus === 'in_progress' ? 'completed' : 'testing';
+    if (nextStatus === 'completed') {
+      setOutcomeModalOpen(true);
+    } else {
+      setCurrentStatus(nextStatus);
+      updateSolutionStatus(solution.id, nextStatus as any);
+    }
   };
 
   const handleShare = () => {
@@ -63,7 +81,20 @@ export const SolutionView: React.FC<SolutionViewProps> = ({ solution, onBack, on
           <span>Modify Situation</span>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Badge */}
+          {isCompleted ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Completed & Reported</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <PlayCircle className="w-3.5 h-3.5 text-indigo-600" />
+              <span>In Progress / Testing</span>
+            </span>
+          )}
+
           <Tooltip content="Copy link to this specific analysis" position="bottom">
             <button
               onClick={handleShare}
@@ -97,7 +128,7 @@ export const SolutionView: React.FC<SolutionViewProps> = ({ solution, onBack, on
               className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition-all cursor-pointer"
             >
               <CheckSquare className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Report Outcome</span>
+              <span>{isCompleted ? 'Update Outcome' : 'Report Outcome'}</span>
             </button>
           </Tooltip>
         </div>

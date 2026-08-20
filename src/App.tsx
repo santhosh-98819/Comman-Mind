@@ -16,6 +16,7 @@ import { ExperiencesView } from './views/ExperiencesView';
 import { ShareExperienceView } from './views/ShareExperienceView';
 import { MySolutionsView } from './views/MySolutionsView';
 import { DashboardView } from './views/DashboardView';
+import { ProfileView } from './views/ProfileView';
 import { OnboardingView } from './views/OnboardingView';
 import { LoginView } from './views/LoginView';
 import { SignUpView } from './views/SignUpView';
@@ -28,6 +29,7 @@ export type ViewMode =
   | 'share-experience'
   | 'solutions'
   | 'dashboard'
+  | 'profile'
   | 'onboarding'
   | 'login'
   | 'signup';
@@ -49,7 +51,8 @@ export default function App() {
   const refreshCounts = () => {
     const active = getLocalActiveSolutions();
     const saved = getLocalSavedSolutions();
-    setActiveSolutionsCount(active.length + saved.length);
+    const uniqueIds = new Set([...active.map((s) => s.id), ...saved.map((s) => s.id)]);
+    setActiveSolutionsCount(uniqueIds.size);
   };
 
   useEffect(() => {
@@ -84,7 +87,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/50 text-slate-900 font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-200">
       {/* Top Navigation */}
       <Navbar
         currentView={currentView}
@@ -130,6 +133,7 @@ export default function App() {
             initialProblem={askInitialProblem}
             initialCategory={askInitialCategory}
             onAnalysisComplete={handleAnalysisComplete}
+            onNavigate={handleNavigate}
           />
         )}
 
@@ -167,6 +171,13 @@ export default function App() {
         {currentView === 'dashboard' && (
           <DashboardView
             user={user}
+            onNavigate={handleNavigate}
+            onSelectSolution={handleSelectSolution}
+          />
+        )}
+
+        {currentView === 'profile' && (
+          <ProfileView
             onNavigate={handleNavigate}
             onSelectSolution={handleSelectSolution}
           />

@@ -42,7 +42,7 @@ export const ReportOutcomeModal: React.FC<ReportOutcomeModalProps> = ({
     setError(null);
 
     try {
-      await reportOutcomeFeedback(solution.id, {
+      const res = await reportOutcomeFeedback(solution.id, {
         result,
         whatHappened: whatHappened.trim(),
         whatLearned: whatLearned.trim() || 'Practical execution and structured tracking gave key insights.',
@@ -50,6 +50,7 @@ export const ReportOutcomeModal: React.FC<ReportOutcomeModalProps> = ({
         isAnonymous,
         authorName: authorName.trim() || undefined,
         shareAsPublicExperience: shareWhatLearned,
+        solutionContext: solution,
       });
 
       try {
@@ -64,7 +65,7 @@ export const ReportOutcomeModal: React.FC<ReportOutcomeModalProps> = ({
       setSubmittedSuccess(true);
       setTimeout(() => {
         onSuccess();
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
       setError(err.message || 'Failed to record outcome. Please try again.');
       setIsSubmitting(false);

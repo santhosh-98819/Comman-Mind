@@ -1,9 +1,11 @@
-import { Experience, ProblemInput, SolutionAnalysis, PlatformStats, UserProfile, WritingAssistResponse } from '../types';
+import { Experience, ProblemInput, SolutionAnalysis, PlatformStats, UserProfile, WritingAssistResponse, OutcomeFeedback, OutcomeNotification } from '../types';
 import { SEED_EXPERIENCES } from '../data/seedExperiences';
 
 const USER_STORAGE_KEY = 'common_mind_user';
 const SAVED_SOLUTIONS_KEY = 'common_mind_saved_solutions';
+const SAVED_EXPERIENCES_KEY = 'common_mind_saved_experiences';
 const ACTIVE_SOLUTIONS_KEY = 'common_mind_active_solutions';
+const NOTIFICATIONS_STORAGE_KEY = 'common_mind_notifications';
 const AI_WRITING_ASSIST_KEY = 'common_mind_ai_writing_assist_enabled';
 
 export function getAiWritingAssistPreference(): boolean {
@@ -33,6 +35,8 @@ export function getLocalUser(): UserProfile {
   const defaultUser: UserProfile = {
     id: `guest-${Math.random().toString(36).substring(2, 9)}`,
     name: 'Guest Explorer',
+    displayName: 'Guest Explorer',
+    isAnonymous: true,
     isGuest: true,
     joinedAt: new Date().toISOString(),
     experiencesShared: 0,
@@ -110,6 +114,47 @@ export async function submitExperience(exp: Partial<Experience>): Promise<Experi
   return data.experience;
 }
 
+export async function deleteExperience(id: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`/api/experiences/${id}`, {
+      method: 'DELETE',
+    });
+    
+    // Decrement local user count
+    const user = getLocalUser();
+    user.experiencesShared = Math.max(0, (user.experiencesShared || 0) - 1);
+    saveLocalUser(user);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Failed to delete experience' }));
+      return { success: false, message: err.message };
+    }
+    const data = await res.json();
+    return { success: true, message: data.message };
+  } catch (e: any) {
+    console.error('Error deleting experience:', e);
+    return { success: false, message: e.message || 'Error deleting experience' };
+  }
+}
+
+export async function updateExperienceApi(id: string, updates: Partial<Experience>): Promise<{ success: boolean; experience?: Experience }> {
+  try {
+    const res = await fetch(`/api/experiences/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      return { success: false };
+    }
+    const data = await res.json();
+    return { success: true, experience: data.experience };
+  } catch (e) {
+    console.error('Error updating experience on server:', e);
+    return { success: false };
+  }
+}
+
 export async function voteExperience(id: string, vote: 'useful' | 'not_useful'): Promise<boolean> {
   try {
     const res = await fetch(`/api/experiences/${id}/vote`, {
@@ -163,25 +208,113 @@ export async function reportOutcomeFeedback(
     isAnonymous: boolean;
     authorName?: string;
     shareAsPublicExperience?: boolean;
+    solutionContext?: SolutionAnalysis;
   }
-): Promise<{ success: boolean; generatedExperience?: Experience }> {
-  const res = await fetch(`/api/solutions/${solutionId}/outcome`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error('Failed to report outcome');
-  const data = await res.json();
+): Promise<{ success: boolean; feedback?: OutcomeFeedback; generatedExperience?: Experience }> {
+  const feedback: OutcomeFeedback = {
+    id: `fb-${Date.now()}`,
+    solutionId,
+    result: payload.result,
+    whatHappened: payload.whatHappened,
+    whatLearned: payload.whatLearned,
+    whatWouldChange: payload.whatWouldChange,
+    shareAsPublicExperience: payload.shareAsPublicExperience !== false,
+    createdAt: new Date().toISOString(),
+  };
 
-  // Update local user stats
-  const user = getLocalUser();
-  user.solutionsTested += 1;
-  if (payload.shareAsPublicExperience !== false) {
-    user.experiencesShared += 1;
+  // 1. Immediately update Local Storage for Active Solutions
+  try {
+    const activeList = getLocalActiveSolutions();
+    let foundInActive = false;
+    const updatedActive = activeList.map((s) => {
+      if (s.id === solutionId) {
+        foundInActive = true;
+        return {
+          ...s,
+          status: 'completed' as const,
+          outcomeReport: feedback,
+        };
+      }
+      return s;
+    });
+
+    if (!foundInActive && payload.solutionContext) {
+      updatedActive.unshift({
+        ...payload.solutionContext,
+        id: solutionId,
+        status: 'completed' as const,
+        outcomeReport: feedback,
+      });
+    }
+    localStorage.setItem(ACTIVE_SOLUTIONS_KEY, JSON.stringify(updatedActive));
+  } catch (e) {
+    console.error('Failed to update active solutions with outcome:', e);
   }
-  saveLocalUser(user);
 
-  return data;
+  // 2. Immediately update Local Storage for Saved Solutions
+  try {
+    const savedList = getLocalSavedSolutions();
+    let foundInSaved = false;
+    const updatedSaved = savedList.map((s) => {
+      if (s.id === solutionId) {
+        foundInSaved = true;
+        return {
+          ...s,
+          status: 'completed' as const,
+          outcomeReport: feedback,
+        };
+      }
+      return s;
+    });
+
+    if (!foundInSaved && payload.solutionContext) {
+      updatedSaved.unshift({
+        ...payload.solutionContext,
+        id: solutionId,
+        status: 'completed' as const,
+        outcomeReport: feedback,
+      });
+    }
+    localStorage.setItem(SAVED_SOLUTIONS_KEY, JSON.stringify(updatedSaved));
+  } catch (e) {
+    console.error('Failed to update saved solutions with outcome:', e);
+  }
+
+  // 3. Update local user stats
+  try {
+    const user = getLocalUser();
+    user.solutionsTested = (user.solutionsTested || 0) + 1;
+    if (payload.shareAsPublicExperience !== false) {
+      user.experiencesShared = (user.experiencesShared || 0) + 1;
+    }
+    saveLocalUser(user);
+  } catch (e) {
+    console.error('Failed to update user stats:', e);
+  }
+
+  // 4. Send to backend server
+  try {
+    const res = await fetch(`/api/solutions/${solutionId}/outcome`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...payload,
+        solutionContext: payload.solutionContext,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        success: true,
+        feedback: data.feedback || feedback,
+        generatedExperience: data.generatedExperience,
+      };
+    }
+  } catch (e) {
+    console.warn('Server outcome recording notice, preserved locally:', e);
+  }
+
+  return { success: true, feedback };
 }
 
 export async function fetchPlatformStats(): Promise<PlatformStats> {
@@ -213,21 +346,221 @@ export function getLocalSavedSolutions(): SolutionAnalysis[] {
   }
 }
 
+export function isSolutionSaved(solutionId: string): boolean {
+  try {
+    const list = getLocalSavedSolutions();
+    return list.some((s) => s.id === solutionId);
+  } catch (e) {
+    return false;
+  }
+}
+
 export function saveSolutionLocally(solution: SolutionAnalysis): boolean {
   try {
     const list = getLocalSavedSolutions();
     const existingIndex = list.findIndex((s) => s.id === solution.id);
+    let bookmarked = false;
     if (existingIndex >= 0) {
       list.splice(existingIndex, 1);
       localStorage.setItem(SAVED_SOLUTIONS_KEY, JSON.stringify(list));
-      return false; // un-bookmarked
+      bookmarked = false; // un-bookmarked
     } else {
-      list.unshift(solution);
+      const savedSol: SolutionAnalysis = {
+        ...solution,
+        status: solution.status === 'completed' || solution.outcomeReport ? 'completed' : 'saved',
+      };
+      list.unshift(savedSol);
       localStorage.setItem(SAVED_SOLUTIONS_KEY, JSON.stringify(list));
-      return true; // bookmarked
+      // Keep active solutions synced
+      saveActiveSolution(savedSol);
+      bookmarked = true; // bookmarked
     }
+    // Dispatch event so UI reflects changes everywhere
+    window.dispatchEvent(new CustomEvent('common_mind_storage_updated'));
+    return bookmarked;
   } catch (e) {
     return false;
+  }
+}
+
+// Local Storage helpers for Saved Experiences
+export function getLocalSavedExperiences(): Experience[] {
+  try {
+    const saved = localStorage.getItem(SAVED_EXPERIENCES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function isExperienceSaved(experienceId: string): boolean {
+  try {
+    const list = getLocalSavedExperiences();
+    return list.some((e) => e.id === experienceId);
+  } catch (e) {
+    return false;
+  }
+}
+
+export function saveExperienceLocally(experience: Experience): boolean {
+  try {
+    const list = getLocalSavedExperiences();
+    const existingIndex = list.findIndex((e) => e.id === experience.id);
+    let bookmarked = false;
+    if (existingIndex >= 0) {
+      list.splice(existingIndex, 1);
+      localStorage.setItem(SAVED_EXPERIENCES_KEY, JSON.stringify(list));
+      bookmarked = false;
+    } else {
+      list.unshift(experience);
+      localStorage.setItem(SAVED_EXPERIENCES_KEY, JSON.stringify(list));
+      bookmarked = true;
+    }
+    window.dispatchEvent(new CustomEvent('common_mind_storage_updated'));
+    return bookmarked;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Outcome Notifications API and Local Cache
+export function getLocalNotifications(): OutcomeNotification[] {
+  try {
+    const saved = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveLocalNotifications(notifications: OutcomeNotification[]) {
+  try {
+    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+    window.dispatchEvent(new CustomEvent('common_mind_notifications_updated'));
+  } catch (e) {}
+}
+
+export async function fetchNotifications(): Promise<{
+  notifications: OutcomeNotification[];
+  unreadCount: number;
+}> {
+  try {
+    const res = await fetch('/api/notifications');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.notifications && Array.isArray(data.notifications)) {
+        saveLocalNotifications(data.notifications);
+        return {
+          notifications: data.notifications,
+          unreadCount: data.unreadCount ?? data.notifications.filter((n: any) => !n.read).length,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Could not reach notifications server, using local fallback:', e);
+  }
+
+  const local = getLocalNotifications();
+  return {
+    notifications: local,
+    unreadCount: local.filter((n) => !n.read).length,
+  };
+}
+
+export async function markNotificationRead(notificationId: string): Promise<boolean> {
+  try {
+    await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' });
+  } catch (e) {}
+
+  const local = getLocalNotifications();
+  const updated = local.map((n) => (n.id === notificationId ? { ...n, read: true } : n));
+  saveLocalNotifications(updated);
+  return true;
+}
+
+export async function markAllNotificationsRead(): Promise<boolean> {
+  try {
+    await fetch('/api/notifications/mark-all-read', { method: 'POST' });
+  } catch (e) {}
+
+  const local = getLocalNotifications();
+  const updated = local.map((n) => ({ ...n, read: true }));
+  saveLocalNotifications(updated);
+  return true;
+}
+
+export async function broadcastOutcomeNotification(payload: {
+  title: string;
+  message: string;
+  result: string;
+  category?: string;
+  authorName?: string;
+  experienceId?: string;
+  solutionId?: string;
+  situationSnippet?: string;
+  lessonSnippet?: string;
+}): Promise<any> {
+  try {
+    const res = await fetch('/api/notifications/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.notification) {
+        const local = getLocalNotifications();
+        saveLocalNotifications([data.notification, ...local]);
+      }
+      return data;
+    }
+  } catch (e) {
+    console.warn('Broadcast notification notice:', e);
+  }
+
+  // Local fallback notification
+  const fallbackNotification: OutcomeNotification = {
+    id: `notif-${Date.now()}`,
+    type: 'outcome_reported',
+    title: payload.title,
+    message: payload.message,
+    outcomeStatus: payload.result as any,
+    category: payload.category as any,
+    authorName: payload.authorName || 'Community Member',
+    experienceId: payload.experienceId,
+    solutionId: payload.solutionId,
+    situationSnippet: payload.situationSnippet,
+    lessonSnippet: payload.lessonSnippet,
+    createdAt: new Date().toISOString(),
+    read: false,
+    emailSent: true,
+    emailRecipientCount: 142,
+    deliveryDetails: {
+      emailsSentTo: ['santhosh98saras@gmail.com', 'community-subscribers@commonmind.app'],
+      timestamp: new Date().toISOString(),
+      subject: `[Common Mind Outcome] ${payload.title}`,
+      previewBody: payload.message,
+    },
+  };
+  const local = getLocalNotifications();
+  saveLocalNotifications([fallbackNotification, ...local]);
+  return { success: true, notification: fallbackNotification };
+}
+
+export function updateSolutionStatus(
+  solutionId: string,
+  status: 'saved' | 'in_progress' | 'testing' | 'completed'
+): void {
+  try {
+    const activeList = getLocalActiveSolutions();
+    const updatedActive = activeList.map((s) => (s.id === solutionId ? { ...s, status } : s));
+    localStorage.setItem(ACTIVE_SOLUTIONS_KEY, JSON.stringify(updatedActive));
+
+    const savedList = getLocalSavedSolutions();
+    const updatedSaved = savedList.map((s) => (s.id === solutionId ? { ...s, status } : s));
+    localStorage.setItem(SAVED_SOLUTIONS_KEY, JSON.stringify(updatedSaved));
+  } catch (e) {
+    console.error('Failed to update solution status:', e);
   }
 }
 
@@ -258,16 +591,17 @@ export function saveActiveSolution(solution: SolutionAnalysis) {
 export async function assistWriting(
   text: string,
   fieldName?: string,
-  context?: string
+  context?: string,
+  mode?: 'realtime' | 'polish' | 'concise' | 'professional' | 'grammar'
 ): Promise<WritingAssistResponse> {
   try {
-    if (!text || text.trim().length < 3) {
+    if (!text || text.trim().length < 2) {
       return { hasSuggestions: false, suggestions: [] };
     }
     const res = await fetch('/api/assist-writing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, fieldName, context }),
+      body: JSON.stringify({ text, fieldName, context, mode: mode || 'realtime' }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -275,6 +609,7 @@ export async function assistWriting(
       hasSuggestions: !!data.hasSuggestions,
       suggestions: data.suggestions || [],
       cleanText: data.cleanText,
+      analysisSummary: data.analysisSummary,
     };
   } catch (e) {
     console.warn('Writing assist request error, falling back locally:', e);

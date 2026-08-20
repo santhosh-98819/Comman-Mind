@@ -50,7 +50,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return 'Good evening';
   };
 
-  const completedSolutions = activeSolutions.filter((s) => s.status === 'completed' || !!s.outcomeReport);
+  const allSolutionsMap = new Map<string, SolutionAnalysis>();
+  savedSolutions.forEach((s) => allSolutionsMap.set(s.id, s));
+  activeSolutions.forEach((s) => {
+    const existing = allSolutionsMap.get(s.id);
+    if (existing) {
+      allSolutionsMap.set(s.id, {
+        ...existing,
+        ...s,
+        status: s.status || existing.status,
+        outcomeReport: s.outcomeReport || existing.outcomeReport,
+      });
+    } else {
+      allSolutionsMap.set(s.id, s);
+    }
+  });
+  const allSolutions = Array.from(allSolutionsMap.values());
+  const completedSolutions = allSolutions.filter((s) => s.status === 'completed' || !!s.outcomeReport);
 
   return (
     <div className="max-w-6xl mx-auto py-6 sm:py-10 space-y-8 animate-fadeIn pb-16">
@@ -288,7 +304,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-2 border-t border-slate-100 space-y-3">
               {(!platformStats || platformStats.totalRealExperiences === 0) ? (
                 <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 space-y-1">
                   <span className="font-bold block">No community experiences yet</span>
@@ -304,6 +320,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </p>
                 </div>
               )}
+
+              <button
+                onClick={() => onNavigate('profile')}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-indigo-50/70 hover:bg-indigo-100/80 border border-indigo-100 text-indigo-900 text-xs font-bold transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-indigo-600" />
+                  <span>Manage Profile & Privacy</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-indigo-600" />
+              </button>
             </div>
           </div>
         </div>

@@ -10,15 +10,22 @@ import {
   signOut,
   sendPasswordResetEmail,
   updateProfile,
+  updatePassword,
+  deleteUser,
 } from 'firebase/auth';
 import {
   doc,
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
+  collection,
+  query,
+  where,
+  getDocs,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { UserProfile } from '../types';
+import { UserProfile, ProfileVisibility, Category } from '../types';
 import { getLocalUser, saveLocalUser } from '../services/api';
 
 interface AuthContextType {
@@ -33,7 +40,10 @@ interface AuthContextType {
   loginAsLocalUser: (name: string, email?: string) => void;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  changePassword: (newPass: string) => Promise<void>;
   updateUserPreferences: (prefs: Partial<UserProfile>) => Promise<void>;
+  updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
+  deleteUserAccount: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -54,10 +64,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = userSnap.data();
         const profile: UserProfile = {
           id: user.uid,
-          name: data.name || (user.isAnonymous ? 'Guest Explorer' : user.displayName || 'Community Member'),
-          email: user.email || undefined,
+          uid: user.uid,
+          name: data.displayName || data.name || (user.isAnonymous ? 'Guest Explorer' : user.displayName || 'Community Member'),
+          displayName: data.displayName || data.name || user.displayName || 'Community Member',
+          email: user.email || data.email || undefined,
+          photoURL: data.photoURL || user.photoURL || undefined,
+          bannerURL: data.bannerURL || undefined,
+          about: data.about || '',
+          interests: (data.interests as Category[]) || [],
+          isAnonymous: data.isAnonymous !== undefined ? Boolean(data.isAnonymous) : Boolean(user.isAnonymous),
+          profileVisibility: (data.profileVisibility as ProfileVisibility) || 'public',
+          themePreference: data.themePreference || undefined,
+          aiWritingAssistEnabled: data.aiWritingAssistEnabled !== undefined ? Boolean(data.aiWritingAssistEnabled) : true,
           isGuest: user.isAnonymous,
           joinedAt: data.createdAt || new Date().toISOString(),
+          createdAt: data.createdAt || new Date().toISOString(),
+          updatedAt: data.updatedAt || new Date().toISOString(),
           experiencesShared: data.experiencesShared || 0,
           solutionsTested: data.solutionsTested || 0,
           peopleHelped: data.peopleHelped || 0,
@@ -67,11 +89,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveLocalUser(profile);
       } else {
         const initialName = customName || (user.isAnonymous ? 'Guest Explorer' : user.displayName || 'Community Member');
+        // Preserve any guest theme stored in localStorage
+        let savedGuestTheme: any = 'system';
+        try {
+          savedGuestTheme = localStorage.getItem('commonmind_theme_preference') || 'system';
+        } catch {
+          // ignore
+        }
+
         const newProfileData = {
           id: user.uid,
+          uid: user.uid,
           name: initialName,
+          displayName: initialName,
           email: user.email || '',
+          photoURL: user.photoURL || '',
+          about: '',
+          interests: ['Everyday Problems', 'Productivity', 'Career'],
           isAnonymous: user.isAnonymous || Boolean(isAnonPref),
+          profileVisibility: 'public',
+          themePreference: savedGuestTheme,
+          aiWritingAssistEnabled: true,
           displayNamePreference: isAnonPref ? 'anonymous' : 'public',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -84,10 +122,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const profile: UserProfile = {
           id: user.uid,
+          uid: user.uid,
           name: initialName,
+          displayName: initialName,
           email: user.email || undefined,
+          photoURL: user.photoURL || undefined,
+          about: '',
+          interests: newProfileData.interests as Category[],
+          isAnonymous: newProfileData.isAnonymous,
+          profileVisibility: 'public',
+          themePreference: savedGuestTheme,
+          aiWritingAssistEnabled: true,
           isGuest: user.isAnonymous,
           joinedAt: newProfileData.createdAt,
+          createdAt: newProfileData.createdAt,
+          updatedAt: newProfileData.updatedAt,
           experiencesShared: 0,
           solutionsTested: 0,
           peopleHelped: 0,
@@ -101,8 +150,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Fallback local memory profile so app remains responsive
       const fallbackProfile: UserProfile = {
         id: user.uid,
+        uid: user.uid,
         name: customName || (user.isAnonymous ? 'Guest Explorer' : user.displayName || 'Community Member'),
+        displayName: customName || user.displayName || 'Community Member',
         email: user.email || undefined,
+        photoURL: user.photoURL || undefined,
+        about: '',
+        interests: ['Everyday Problems', 'Productivity'],
+        isAnonymous: user.isAnonymous || false,
+        profileVisibility: 'public',
+        aiWritingAssistEnabled: true,
         isGuest: user.isAnonymous,
         joinedAt: new Date().toISOString(),
         experiencesShared: 0,
@@ -121,7 +178,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user) {
         await fetchOrCreateProfile(user);
       } else {
-        // Keep local user profile if already present
         const local = getLocalUser();
         if (local) {
           setUserProfile(local);
@@ -165,7 +221,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       if (err.code === 'auth/operation-not-allowed') {
         const errorMsg =
-          'Email/Password sign-up is not enabled in your Firebase Console. Please use "Continue with Google", enable Email/Password in Firebase Console (Authentication > Sign-in method), or click "Continue as Guest".';
+          'Email/Password sign-up is not enabled in your Firebase Console. Please use "Continue with Google" or click "Continue as Guest".';
         const newErr = new Error(errorMsg);
         (newErr as any).code = err.code;
         throw newErr;
@@ -180,10 +236,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await fetchOrCreateProfile(cred.user, 'Guest Explorer');
     } catch (err: any) {
       console.warn('Firebase anonymous auth unavailable, falling back to local guest mode:', err.message);
-      // Seamless local fallback
       const guestProfile: UserProfile = {
         id: `guest-${Date.now()}`,
         name: 'Guest Explorer',
+        displayName: 'Guest Explorer',
+        isAnonymous: true,
         isGuest: true,
         joinedAt: new Date().toISOString(),
         experiencesShared: 0,
@@ -200,7 +257,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const localProfile: UserProfile = {
       id: `user-${Date.now()}`,
       name: name.trim() || 'Community Member',
+      displayName: name.trim() || 'Community Member',
       email: email?.trim(),
+      isAnonymous: false,
       isGuest: false,
       joinedAt: new Date().toISOString(),
       experiencesShared: 0,
@@ -221,6 +280,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const guestUser: UserProfile = {
       id: `guest-${Math.random().toString(36).substring(2, 9)}`,
       name: 'Guest Explorer',
+      displayName: 'Guest Explorer',
+      isAnonymous: true,
       isGuest: true,
       joinedAt: new Date().toISOString(),
       experiencesShared: 0,
@@ -237,23 +298,104 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await sendPasswordResetEmail(auth, email.trim());
   };
 
-  const updateUserPreferences = async (prefs: Partial<UserProfile>) => {
+  const changePassword = async (newPass: string) => {
+    if (!auth.currentUser) throw new Error('You must be logged in to change your password.');
+    await updatePassword(auth.currentUser, newPass);
+  };
+
+  const updateUserProfile = async (data: Partial<UserProfile>) => {
     if (currentUser) {
       try {
         const userRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userRef, {
-          ...prefs,
+        const updatePayload = {
+          ...data,
           updatedAt: new Date().toISOString(),
-        });
+        };
+        await updateDoc(userRef, updatePayload);
+
+        // Also update Auth profile if name or photo changed
+        if (data.displayName || data.name || data.photoURL !== undefined) {
+          await updateProfile(currentUser, {
+            displayName: data.displayName || data.name || currentUser.displayName || undefined,
+            photoURL: data.photoURL || currentUser.photoURL || undefined,
+          });
+        }
       } catch (err) {
         console.warn('Failed to update user profile in Firestore:', err);
       }
     }
+
     setUserProfile((prev) => {
-      const updated = prev ? { ...prev, ...prefs } : null;
-      if (updated) saveLocalUser(updated);
+      const updated: UserProfile = prev
+        ? {
+            ...prev,
+            ...data,
+            name: data.displayName || data.name || prev.name,
+            displayName: data.displayName || data.name || prev.displayName,
+          }
+        : {
+            id: currentUser?.uid || `user-${Date.now()}`,
+            name: data.displayName || data.name || 'Community Member',
+            displayName: data.displayName || data.name || 'Community Member',
+            isAnonymous: Boolean(data.isAnonymous),
+            isGuest: Boolean(currentUser?.isAnonymous),
+            joinedAt: new Date().toISOString(),
+            experiencesShared: 0,
+            solutionsTested: 0,
+            peopleHelped: 0,
+            savedSolutionIds: [],
+            ...data,
+          };
+      saveLocalUser(updated);
       return updated;
     });
+  };
+
+  const updateUserPreferences = async (prefs: Partial<UserProfile>) => {
+    await updateUserProfile(prefs);
+  };
+
+  const deleteUserAccount = async () => {
+    if (!currentUser) throw new Error('No user is currently logged in.');
+    const uid = currentUser.uid;
+
+    // 1. Delete Firestore documents
+    try {
+      const userRef = doc(db, 'users', uid);
+      await deleteDoc(userRef);
+    } catch (err) {
+      console.warn('Error deleting user doc:', err);
+    }
+
+    // 2. Delete user's experiences
+    try {
+      const expQuery = query(collection(db, 'experiences'), where('userId', '==', uid));
+      const expSnap = await getDocs(expQuery);
+      const deleteOps = expSnap.docs.map((d) => deleteDoc(d.ref));
+      await Promise.all(deleteOps);
+    } catch (err) {
+      console.warn('Error deleting user experiences:', err);
+    }
+
+    // 3. Delete Firebase Auth user
+    await deleteUser(currentUser);
+
+    // Reset local state
+    const guestUser: UserProfile = {
+      id: `guest-${Math.random().toString(36).substring(2, 9)}`,
+      name: 'Guest Explorer',
+      displayName: 'Guest Explorer',
+      isAnonymous: true,
+      isGuest: true,
+      joinedAt: new Date().toISOString(),
+      experiencesShared: 0,
+      solutionsTested: 0,
+      peopleHelped: 0,
+      savedSolutionIds: [],
+    };
+    setUserProfile(guestUser);
+    saveLocalUser(guestUser);
+    setCurrentUser(null);
   };
 
   const refreshProfile = async () => {
@@ -276,7 +418,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginAsLocalUser,
         logout,
         resetPassword,
+        changePassword,
         updateUserPreferences,
+        updateUserProfile,
+        deleteUserAccount,
         refreshProfile,
       }}
     >
