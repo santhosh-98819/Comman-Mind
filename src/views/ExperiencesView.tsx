@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Experience, Category, OutcomeStatus } from '../types';
 import { ExperienceCard } from '../components/ExperienceCard';
 import { Tooltip } from '../components/Tooltip';
-import { fetchExperiences } from '../services/api';
-import { Search, Filter, PlusCircle, Sparkles, Compass, CheckCircle2, SlidersHorizontal, AlertTriangle, ArrowRight, ShieldCheck, HelpCircle } from 'lucide-react';
+import { fetchExperiences, getLocalUser } from '../services/api';
+import { fetchUserExperiences } from '../services/firestoreService';
+import { Search, Filter, PlusCircle, Sparkles, Compass, CheckCircle2, SlidersHorizontal, AlertTriangle, ArrowRight, ShieldCheck, HelpCircle, User } from 'lucide-react';
 import { ViewMode } from '../App';
 
 interface ExperiencesViewProps {
@@ -21,23 +22,33 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
   const [selectedOutcome, setSelectedOutcome] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'relevance' | 'most_useful' | 'newest'>('most_useful');
-  const [viewMode, setViewMode] = useState<'community' | 'demo'>('community');
-  const [counts, setCounts] = useState<{ real: number; demo: number }>({ real: 0, demo: 0 });
+  const [viewMode, setViewMode] = useState<'community' | 'my' | 'demo'>('community');
+  const [counts, setCounts] = useState<{ real: number; my: number; demo: number }>({ real: 0, my: 0, demo: 0 });
 
   const loadData = async () => {
     setLoading(true);
-    const data = await fetchExperiences({
-      category: selectedCategory,
-      outcome: selectedOutcome,
-      query: searchQuery,
-      sort: sortBy,
-      mode: viewMode,
-    });
-    setExperiences(data.experiences || []);
-    setCounts({
-      real: data.realCount ?? 0,
-      demo: data.demoCount ?? 0,
-    });
+    let experiencesData: Experience[] = [];
+    
+    if (viewMode === 'my') {
+      const user = getLocalUser();
+      experiencesData = await fetchUserExperiences(user.id);
+      setCounts((prev) => ({ ...prev, my: experiencesData.length }));
+    } else {
+      const data = await fetchExperiences({
+        category: selectedCategory,
+        outcome: selectedOutcome,
+        query: searchQuery,
+        sort: sortBy,
+        mode: viewMode,
+      });
+      experiencesData = data.experiences || [];
+      setCounts((prev) => ({
+        ...prev,
+        real: data.realCount ?? 0,
+        demo: data.demoCount ?? 0,
+      }));
+    }
+    setExperiences(experiencesData);
     setLoading(false);
   };
 
@@ -120,6 +131,24 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
               <span>Real Community Experiences</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] ${viewMode === 'community' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
                 {counts.real}
+              </span>
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Experiences created by you" position="top">
+            <button
+              onClick={() => setViewMode('my')}
+              id="tab-my-experiences"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'my'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <User className="w-4 h-4 text-indigo-600" />
+              <span>My Experiences</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] ${viewMode === 'my' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-700'}`}>
+                {counts.my}
               </span>
             </button>
           </Tooltip>
