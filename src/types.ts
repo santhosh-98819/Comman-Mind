@@ -198,6 +198,7 @@ export interface UserProfile {
   savedExperienceIds?: string[];
   notificationPreferences?: NotificationPreferences;
   aiWritingAssistEnabled?: boolean;
+  onboardingCompleted: boolean;
 }
 
 export type WritingSuggestionType = 'typo_grammar' | 'alternative_wording' | 'clarity' | 'concise' | 'professional';

@@ -25,6 +25,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { UserProfile, ProfileVisibility, Category } from '../types';
 import { getLocalUser, saveLocalUser } from '../services/api';
 
@@ -58,9 +59,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchOrCreateProfile = async (user: User, customName?: string, isAnonPref?: boolean) => {
     try {
       const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
+      let userSnap;
+      try {
+        userSnap = await getDoc(userRef);
+      } catch (firestoreErr) {
+        console.warn('Could not read user profile from Firestore:', firestoreErr);
+        userSnap = null;
+      }
 
-      if (userSnap.exists()) {
+      if (userSnap && userSnap.exists()) {
         const data = userSnap.data();
         const profile: UserProfile = {
           id: user.uid,
@@ -76,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           profileVisibility: (data.profileVisibility as ProfileVisibility) || 'public',
           themePreference: data.themePreference || undefined,
           aiWritingAssistEnabled: data.aiWritingAssistEnabled !== undefined ? Boolean(data.aiWritingAssistEnabled) : true,
+          onboardingCompleted: data.onboardingCompleted !== undefined ? Boolean(data.onboardingCompleted) : true,
           isGuest: user.isAnonymous,
           joinedAt: data.createdAt || new Date().toISOString(),
           createdAt: data.createdAt || new Date().toISOString(),
@@ -110,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           profileVisibility: 'public',
           themePreference: savedGuestTheme,
           aiWritingAssistEnabled: true,
+          onboardingCompleted: true,
           displayNamePreference: isAnonPref ? 'anonymous' : 'public',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -118,7 +127,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           peopleHelped: 0,
           savedSolutionIds: [],
         };
-        await setDoc(userRef, newProfileData);
+        try {
+          await setDoc(userRef, newProfileData);
+        } catch (setErr) {
+          console.warn('Could not write user profile to Firestore:', setErr);
+        }
 
         const profile: UserProfile = {
           id: user.uid,
@@ -133,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           profileVisibility: 'public',
           themePreference: savedGuestTheme,
           aiWritingAssistEnabled: true,
+          onboardingCompleted: true,
           isGuest: user.isAnonymous,
           joinedAt: newProfileData.createdAt,
           createdAt: newProfileData.createdAt,
@@ -160,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAnonymous: user.isAnonymous || false,
         profileVisibility: 'public',
         aiWritingAssistEnabled: true,
+        onboardingCompleted: true,
         isGuest: user.isAnonymous,
         joinedAt: new Date().toISOString(),
         experiencesShared: 0,
@@ -190,9 +205,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    const cred = await signInWithPopup(auth, provider);
-    await fetchOrCreateProfile(cred.user);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const cred = await signInWithPopup(auth, provider);
+      await fetchOrCreateProfile(cred.user);
+    } catch (err: any) {
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        // User voluntarily closed the popup; return gracefully without raising disruptive error
+        return;
+      }
+      if (err.code === 'auth/popup-blocked') {
+        const customErr = new Error(
+          'Google Sign-in popup was blocked by your browser. Please allow pop-ups for this site or open the app in a new browser tab.'
+        );
+        (customErr as any).code = err.code;
+        throw customErr;
+      }
+      throw err;
+    }
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
@@ -242,6 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: 'Guest Explorer',
         isAnonymous: true,
         isGuest: true,
+        onboardingCompleted: true,
         joinedAt: new Date().toISOString(),
         experiencesShared: 0,
         solutionsTested: 0,
@@ -261,6 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: email?.trim(),
       isAnonymous: false,
       isGuest: false,
+      onboardingCompleted: true,
       joinedAt: new Date().toISOString(),
       experiencesShared: 0,
       solutionsTested: 0,
@@ -283,6 +316,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       displayName: 'Guest Explorer',
       isAnonymous: true,
       isGuest: true,
+      onboardingCompleted: true,
       joinedAt: new Date().toISOString(),
       experiencesShared: 0,
       solutionsTested: 0,
@@ -339,6 +373,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             displayName: data.displayName || data.name || 'Community Member',
             isAnonymous: Boolean(data.isAnonymous),
             isGuest: Boolean(currentUser?.isAnonymous),
+            onboardingCompleted: true,
             joinedAt: new Date().toISOString(),
             experiencesShared: 0,
             solutionsTested: 0,
@@ -387,6 +422,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       displayName: 'Guest Explorer',
       isAnonymous: true,
       isGuest: true,
+      onboardingCompleted: true,
       joinedAt: new Date().toISOString(),
       experiencesShared: 0,
       solutionsTested: 0,

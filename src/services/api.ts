@@ -1,3 +1,4 @@
+import { auth } from '../lib/firebase';
 import { Experience, ProblemInput, SolutionAnalysis, PlatformStats, UserProfile, WritingAssistResponse, OutcomeFeedback, OutcomeNotification } from '../types';
 import { SEED_EXPERIENCES } from '../data/seedExperiences';
 
@@ -7,6 +8,26 @@ const SAVED_EXPERIENCES_KEY = 'common_mind_saved_experiences';
 const ACTIVE_SOLUTIONS_KEY = 'common_mind_active_solutions';
 const NOTIFICATIONS_STORAGE_KEY = 'common_mind_notifications';
 const AI_WRITING_ASSIST_KEY = 'common_mind_ai_writing_assist_enabled';
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  let user = auth.currentUser;
+  
+  if (!user) {
+    // Wait for a short time for auth to initialize if it's not ready yet
+    await new Promise(resolve => setTimeout(resolve, 500));
+    user = auth.currentUser;
+  }
+  
+  if (!user) return {};
+  
+  try {
+    const token = await user.getIdToken(true);
+    return { 'Authorization': `Bearer ${token}` };
+  } catch (e) {
+    console.error('Error getting ID token', e);
+    return {};
+  }
+}
 
 export function getAiWritingAssistPreference(): boolean {
   try {
@@ -38,6 +59,7 @@ export function getLocalUser(): UserProfile {
     displayName: 'Guest Explorer',
     isAnonymous: true,
     isGuest: true,
+    onboardingCompleted: true,
     joinedAt: new Date().toISOString(),
     experiencesShared: 0,
     solutionsTested: 0,
@@ -75,7 +97,9 @@ export async function fetchExperiences(params?: {
     if (params?.includeDemo) queryParams.set('includeDemo', 'true');
     if (params?.mode) queryParams.set('mode', params.mode);
 
-    const res = await fetch(`/api/experiences?${queryParams.toString()}`);
+    const res = await fetch(`/api/experiences?${queryParams.toString()}`, {
+      headers: await getAuthHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return {
@@ -97,9 +121,13 @@ export async function fetchExperiences(params?: {
 }
 
 export async function submitExperience(exp: Partial<Experience>): Promise<Experience> {
+  const headers: Record<string, string> = { 
+    'Content-Type': 'application/json',
+    ...await getAuthHeaders()
+  };
   const res = await fetch('/api/experiences', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(exp),
   });
   if (!res.ok) throw new Error('Failed to submit experience');
@@ -118,6 +146,7 @@ export async function deleteExperience(id: string): Promise<{ success: boolean; 
   try {
     const res = await fetch(`/api/experiences/${id}`, {
       method: 'DELETE',
+      headers: await getAuthHeaders(),
     });
     
     // Decrement local user count
@@ -141,7 +170,10 @@ export async function updateExperienceApi(id: string, updates: Partial<Experienc
   try {
     const res = await fetch(`/api/experiences/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...await getAuthHeaders()
+      },
       body: JSON.stringify(updates),
     });
     if (!res.ok) {
@@ -159,7 +191,10 @@ export async function voteExperience(id: string, vote: 'useful' | 'not_useful'):
   try {
     const res = await fetch(`/api/experiences/${id}/vote`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...await getAuthHeaders()
+      },
       body: JSON.stringify({ vote }),
     });
     return res.ok;
@@ -172,7 +207,10 @@ export async function voteExperience(id: string, vote: 'useful' | 'not_useful'):
 export async function analyzeProblem(problemInput: ProblemInput): Promise<SolutionAnalysis> {
   const res = await fetch('/api/analyze-problem', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      ...await getAuthHeaders()
+    },
     body: JSON.stringify(problemInput),
   });
   if (!res.ok) {
@@ -189,7 +227,9 @@ export async function analyzeProblem(problemInput: ProblemInput): Promise<Soluti
 
 export async function fetchSolutions(): Promise<SolutionAnalysis[]> {
   try {
-    const res = await fetch('/api/solutions');
+    const res = await fetch('/api/solutions', {
+      headers: await getAuthHeaders()
+    });
     if (!res.ok) throw new Error('Failed to fetch solutions');
     const data = await res.json();
     return data.solutions || [];
@@ -296,7 +336,10 @@ export async function reportOutcomeFeedback(
   try {
     const res = await fetch(`/api/solutions/${solutionId}/outcome`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...await getAuthHeaders()
+      },
       body: JSON.stringify({
         ...payload,
         solutionContext: payload.solutionContext,
@@ -319,7 +362,9 @@ export async function reportOutcomeFeedback(
 
 export async function fetchPlatformStats(): Promise<PlatformStats> {
   try {
-    const res = await fetch('/api/dashboard/stats');
+    const res = await fetch('/api/dashboard/stats', {
+      headers: await getAuthHeaders()
+    });
     if (!res.ok) throw new Error('Failed to fetch stats');
     const data = await res.json();
     return data.stats;
@@ -445,7 +490,9 @@ export async function fetchNotifications(): Promise<{
   unreadCount: number;
 }> {
   try {
-    const res = await fetch('/api/notifications');
+    const res = await fetch('/api/notifications', {
+      headers: await getAuthHeaders()
+    });
     if (res.ok) {
       const data = await res.json();
       if (data.notifications && Array.isArray(data.notifications)) {
@@ -469,7 +516,10 @@ export async function fetchNotifications(): Promise<{
 
 export async function markNotificationRead(notificationId: string): Promise<boolean> {
   try {
-    await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' });
+    await fetch(`/api/notifications/${notificationId}/read`, { 
+      method: 'POST',
+      headers: await getAuthHeaders()
+    });
   } catch (e) {}
 
   const local = getLocalNotifications();
@@ -480,7 +530,10 @@ export async function markNotificationRead(notificationId: string): Promise<bool
 
 export async function markAllNotificationsRead(): Promise<boolean> {
   try {
-    await fetch('/api/notifications/mark-all-read', { method: 'POST' });
+    await fetch('/api/notifications/mark-all-read', { 
+      method: 'POST',
+      headers: await getAuthHeaders()
+    });
   } catch (e) {}
 
   const local = getLocalNotifications();
@@ -503,7 +556,10 @@ export async function broadcastOutcomeNotification(payload: {
   try {
     const res = await fetch('/api/notifications/broadcast', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...await getAuthHeaders()
+      },
       body: JSON.stringify(payload),
     });
     if (res.ok) {
@@ -600,7 +656,10 @@ export async function assistWriting(
     }
     const res = await fetch('/api/assist-writing', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...await getAuthHeaders()
+      },
       body: JSON.stringify({ text, fieldName, context, mode: mode || 'realtime' }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

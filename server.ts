@@ -1,10 +1,13 @@
 import express, { Request, Response } from 'express';
+import { adminDb } from './src/server/firebaseAdmin.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import { SEED_EXPERIENCES } from './src/data/seedExperiences.js';
+import { authMiddleware, optionalAuthMiddleware } from './src/server/middleware/auth.js';
+import { generalLimiter, experienceCreationLimiter, aiLimiter } from './src/server/services/rateLimiter.js';
 import {
   Experience,
   ProblemInput,
@@ -26,10 +29,33 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
+app.set('trust proxy', 1);
 app.use(express.json());
 
 // Production Experience Database (Starts with ZERO real community experiences)
 let realExperiencesDB: Experience[] = [];
+
+// Initialize real experiences from Firestore Admin
+async function loadPersistedExperiences() {
+  try {
+    const snap = await adminDb.collection('experiences').get();
+    if (!snap.empty) {
+      const loaded: Experience[] = [];
+      snap.forEach((docSnap) => {
+        const data = docSnap.data() as Experience;
+        if (data && !data.isDemo) {
+          loaded.push({ ...data, id: data.id || docSnap.id });
+        }
+      });
+      if (loaded.length > 0) {
+        realExperiencesDB = loaded;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not load experiences from Firestore Admin on startup:', err);
+  }
+}
+loadPersistedExperiences();
 
 // Demo experiences (For Development / Demo Mode Only - Always tagged DEMO EXPERIENCE)
 let demoExperiencesDB: Experience[] = [...SEED_EXPERIENCES];
@@ -79,8 +105,9 @@ function moderateAndValidateExperience(payload: any): {
     };
   }
 
-  // PII & Privacy Filter: Redact explicit email addresses or phone number formats
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  // PII & Privacy Filter: Redact explicit and obfuscated email addresses or phone number formats
+  // Matches: name@domain.com, name [at] domain [dot] com, name(at)domain(dot)com, name at domain dot com
+  const emailRegex = /[a-zA-Z0-9._%+-]+(?:@|\s*\[?\s*(?:at|@)\s*\]?\s*|\s*\(?\s*(?:at|@)\s*\)?\s*|\s+at\s+)[a-zA-Z0-9.-]+(?:(?:\.|\[\s*dot\s*\]|\(\s*dot\s*\))[a-zA-Z]{2,})+/gi;
   const phoneRegex = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
 
   const sanitizeText = (txt: string) => {
@@ -453,7 +480,7 @@ app.get('/api/experiences', (req: Request, res: Response) => {
 });
 
 // POST /api/experiences (User A shares an experience -> Store -> Moderate/validate -> Publish to community repository)
-app.post('/api/experiences', (req: Request, res: Response) => {
+app.post('/api/experiences', authMiddleware, experienceCreationLimiter, async (req: Request, res: Response) => {
   try {
     const moderation = moderateAndValidateExperience(req.body);
     if (!moderation.isValid || !moderation.sanitized) {
@@ -464,7 +491,7 @@ app.post('/api/experiences', (req: Request, res: Response) => {
     const clean = moderation.sanitized;
     const newExp: Experience = {
       id: `exp-user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      userId: req.body.userId || 'guest-user',
+      userId: clean.isAnonymous ? 'anonymous' : (req as any).user.uid,
       authorName: clean.authorName || 'Community Contributor',
       isAnonymous: Boolean(clean.isAnonymous),
       isDemo: false, // Explicitly a REAL COMMUNITY EXPERIENCE
@@ -487,6 +514,11 @@ app.post('/api/experiences', (req: Request, res: Response) => {
 
     // Stored & published immediately to shared community repository
     realExperiencesDB.unshift(newExp);
+    try {
+      await adminDb.collection('experiences').doc(newExp.id).set(newExp);
+    } catch (err) {
+      console.warn('Could not persist experience via Firestore Admin:', err);
+    }
 
     res.status(201).json({
       success: true,
@@ -500,7 +532,7 @@ app.post('/api/experiences', (req: Request, res: Response) => {
 });
 
 // POST /api/experiences/:id/vote (Upvote/Downvote usefulness)
-app.post('/api/experiences/:id/vote', (req: Request, res: Response) => {
+app.post('/api/experiences/:id/vote', optionalAuthMiddleware, async (req: Request, res: Response) => {
   const { id } = req.params;
   const { vote } = req.body; // 'useful' | 'not_useful'
 
@@ -516,11 +548,20 @@ app.post('/api/experiences/:id/vote', (req: Request, res: Response) => {
     exp.notUsefulCount += 1;
   }
 
+  try {
+    await adminDb.collection('experiences').doc(id).set({
+      usefulCount: exp.usefulCount,
+      notUsefulCount: exp.notUsefulCount,
+    }, { merge: true });
+  } catch (err) {
+    // ignore
+  }
+
   res.json({ success: true, usefulCount: exp.usefulCount, notUsefulCount: exp.notUsefulCount });
 });
 
 // DELETE /api/experiences/:id (Delete an experience)
-app.delete('/api/experiences/:id', (req: Request, res: Response) => {
+app.delete('/api/experiences/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const realIndex = realExperiencesDB.findIndex((e) => e.id === id);
@@ -532,7 +573,16 @@ app.delete('/api/experiences/:id', (req: Request, res: Response) => {
     }
 
     if (realIndex !== -1) {
+      if (realExperiencesDB[realIndex].userId !== (req as any).user.uid) {
+        res.status(403).json({ success: false, message: 'Unauthorized: Cannot delete this experience.' });
+        return;
+      }
       realExperiencesDB.splice(realIndex, 1);
+      try {
+        await adminDb.collection('experiences').doc(id).delete();
+      } catch (err) {
+        console.warn('Could not delete experience via Firestore Admin:', err);
+      }
     }
     if (demoIndex !== -1) {
       demoExperiencesDB.splice(demoIndex, 1);
@@ -552,12 +602,23 @@ app.delete('/api/experiences/:id', (req: Request, res: Response) => {
 });
 
 // PUT /api/experiences/:id (Update an experience)
-app.put('/api/experiences/:id', (req: Request, res: Response) => {
+app.put('/api/experiences/:id', authMiddleware, (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    let target = realExperiencesDB.find((e) => e.id === id) || demoExperiencesDB.find((e) => e.id === id);
+    let target = realExperiencesDB.find((e) => e.id === id);
+    if (target && target.userId !== (req as any).user.uid) {
+        res.status(403).json({ success: false, message: 'Unauthorized: Cannot update this experience.' });
+        return;
+    }
+    
+    if (!target) {
+       target = demoExperiencesDB.find((e) => e.id === id);
+       // Demo experiences cannot be updated? The current code allows it.
+       // Let's keep existing behavior for demo.
+    }
+
     if (!target) {
       res.status(404).json({ success: false, message: 'Experience not found.' });
       return;
@@ -572,7 +633,7 @@ app.put('/api/experiences/:id', (req: Request, res: Response) => {
 });
 
 // POST /api/analyze-problem (Full RAG Pipeline with Gemini 3.7 Flash)
-app.post('/api/analyze-problem', async (req: Request, res: Response) => {
+app.post('/api/analyze-problem', optionalAuthMiddleware, aiLimiter, async (req: Request, res: Response) => {
   try {
     const problemInput: ProblemInput = req.body;
     if (!problemInput || !problemInput.problem) {
@@ -798,7 +859,7 @@ app.get('/api/solutions', (req: Request, res: Response) => {
 });
 
 // POST /api/solutions (Save/Bookmark solution)
-app.post('/api/solutions', (req: Request, res: Response) => {
+app.post('/api/solutions', optionalAuthMiddleware, (req: Request, res: Response) => {
   const solution: SolutionAnalysis = req.body;
   if (!solution || !solution.id) {
     res.status(400).json({ success: false, message: 'Invalid solution object.' });
@@ -816,7 +877,7 @@ app.post('/api/solutions', (req: Request, res: Response) => {
 });
 
 // POST /api/solutions/:id/outcome (Outcome Feedback Loop & Generates New Real Community Experience!)
-app.post('/api/solutions/:id/outcome', (req: Request, res: Response) => {
+app.post('/api/solutions/:id/outcome', optionalAuthMiddleware, (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const {
@@ -873,6 +934,11 @@ app.post('/api/solutions/:id/outcome', (req: Request, res: Response) => {
       };
 
       realExperiencesDB.unshift(generatedExperience);
+      try {
+        adminDb.collection('experiences').doc(generatedExpId).set(generatedExperience);
+      } catch (err) {
+        console.warn('Could not persist generated experience via Firestore Admin:', err);
+      }
     }
 
     const feedback: OutcomeFeedback = {

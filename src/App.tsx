@@ -35,7 +35,7 @@ export type ViewMode =
   | 'signup';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<ViewMode>('home');
+  const [currentView, setCurrentView] = useState<ViewMode>('onboarding');
   const [user, setUser] = useState<UserProfile>(getLocalUser());
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [featuredExperiences, setFeaturedExperiences] = useState<Experience[]>([]);
@@ -88,14 +88,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-200">
-      {/* Top Navigation */}
-      <Navbar
-        currentView={currentView}
-        onNavigate={handleNavigate}
-        user={user}
-        onOpenAuth={() => setAuthModalOpen(true)}
-        activeSolutionsCount={activeSolutionsCount}
-      />
+      {/* Top Navigation - Only show if not on onboarding */}
+      {currentView !== 'onboarding' && (
+        <Navbar
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          user={user}
+          onOpenAuth={() => setAuthModalOpen(true)}
+          activeSolutionsCount={activeSolutionsCount}
+        />
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -184,8 +186,8 @@ export default function App() {
         )}
       </main>
 
-      {/* Global Footer */}
-      <Footer onNavigate={handleNavigate} />
+      {/* Global Footer - Only show if not on onboarding */}
+      {currentView !== 'onboarding' && <Footer onNavigate={handleNavigate} />}
 
       {/* User Profile / Auth Modal */}
       <AuthModal
