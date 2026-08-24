@@ -33,7 +33,11 @@ import {
   Copy,
   Sliders,
   Check,
+  Zap,
+  ShieldCheck,
+  Activity,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface AskViewProps {
   initialProblem?: string;
@@ -43,12 +47,12 @@ interface AskViewProps {
 }
 
 const SIMPLE_LOADING_STAGES = [
-  'Checking your category and specific questions...',
-  'Searching through real experiences in our community database...',
-  'Looking at what worked and what failed for others...',
-  'Finding the biggest lessons and common mistakes to avoid...',
-  'Building a step-by-step action plan tailored for you...',
-  'Almost ready! Finalizing your personalized recommendation...'
+  'Verifying your category context and specific question...',
+  'Searching verified experiences in the community database...',
+  'Analyzing what worked vs what failed in matching trials...',
+  'Extracting proven tactics and critical pitfalls to avoid...',
+  'Synthesizing your personalized step-by-step action plan...',
+  'Almost ready! Finalizing recommendations grounded in real data...'
 ];
 
 export const AskView: React.FC<AskViewProps> = ({
@@ -190,7 +194,7 @@ export const AskView: React.FC<AskViewProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!problem.trim()) {
-      setError('Please tell us what problem or question you are facing.');
+      setError('Please describe the problem or question you are facing.');
       setActiveTab('form');
       return;
     }
@@ -210,7 +214,9 @@ export const AskView: React.FC<AskViewProps> = ({
 
     // Build enriched context with category specific details
     let fullContext = context.trim();
-    const detailEntries = Object.entries(categoryDetails).filter(([_, val]) => typeof val === 'string' && val.trim().length > 0);
+    const detailEntries = Object.entries(categoryDetails).filter(
+      ([_, val]) => typeof val === 'string' && val.trim().length > 0
+    );
     if (detailEntries.length > 0) {
       const detailsList = detailEntries
         .map(([id, val]) => {
@@ -256,27 +262,60 @@ export const AskView: React.FC<AskViewProps> = ({
   const CategoryIcon = currentCategoryData.icon;
 
   return (
-    <div className="max-w-5xl mx-auto py-6 sm:py-10 space-y-8 animate-fadeIn pb-16">
+    <div className="max-w-5xl mx-auto py-6 sm:py-10 space-y-8 pb-16">
       {/* ========================================================
-          HEADER & CATEGORY INTRODUCTION (In Simple English)
+          HERO BANNER WITH AMBIENT GLOW & ANIMATED REVEAL
          ======================================================== */}
-      <div className="space-y-3 text-center sm:text-left">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
-          <Brain className="w-3.5 h-3.5" />
-          <span>REAL EXPERIENCES • PRACTICAL ANSWERS</span>
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 bg-gradient-to-b from-white via-slate-50/50 to-indigo-50/30 dark:from-slate-900 dark:via-slate-900/90 dark:to-indigo-950/20 shadow-xs"
+      >
+        {/* Subtle Ambient Radial Glow */}
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-indigo-500/10 dark:bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-3 max-w-2xl">
+            {/* Animated Pill Badge */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800"
+            >
+              <Brain className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 animate-pulse" />
+              <span>SYNTHESIZED FROM REAL COMMUNITY TRIALS</span>
+            </motion.div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+              Ask Common Mind
+            </h1>
+
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              Describe any dilemma, goal, or hurdle. We search real-world human experiences, analyze what worked and what failed, and generate an actionable, step-by-step roadmap.
+            </p>
+          </div>
+
+          {/* Quick Stats / Guarantee Chips */}
+          <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 text-xs">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 shadow-2xs">
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span className="font-semibold">Tested Action Steps</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="font-semibold">Mistakes to Avoid</span>
+            </div>
+          </div>
         </div>
-        <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-          Ask Common Mind
-        </h1>
-        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-3xl">
-          Pick your category below. We will ask you simple questions and match your situation with tested solutions from people who faced the same challenge.
-        </p>
-      </div>
+      </motion.div>
 
       {/* ========================================================
-          1. CATEGORY PICKER (Plain & Clear)
+          1. CATEGORY PICKER (Interactive Staggered Cards)
          ======================================================== */}
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
             <Tag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -287,30 +326,30 @@ export const AskView: React.FC<AskViewProps> = ({
           </span>
         </div>
 
-        {/* Category Carousel / Grid */}
+        {/* Animated Category Cards Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-          {ALL_CATEGORIES.map((catId) => {
+          {ALL_CATEGORIES.map((catId, idx) => {
             const meta = CATEGORY_TAXONOMY[catId];
             const Icon = meta.icon;
             const isSelected = category === catId;
 
             return (
-              <button
+              <motion.button
                 key={catId}
                 type="button"
                 id={`cat-select-${catId.toLowerCase().replace(/\s+/g, '-')}`}
-                onClick={() => {
-                  setCategory(catId);
-                }}
-                className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer group relative overflow-hidden ${
+                onClick={() => setCategory(catId)}
+                whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                whileTap={{ scale: 0.98 }}
+                className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer relative overflow-hidden ${
                   isSelected
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300 dark:ring-indigo-800'
-                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/40 dark:hover:bg-slate-800/60 shadow-2xs'
+                    ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400/40 dark:ring-indigo-700'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/30 dark:hover:bg-slate-800/60 shadow-2xs'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center justify-between gap-2 mb-2">
                   <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
                       isSelected
                         ? 'bg-white/20 text-white'
                         : `${meta.badgeBg} ${meta.badgeText}`
@@ -319,7 +358,10 @@ export const AskView: React.FC<AskViewProps> = ({
                     <Icon className="w-4 h-4" />
                   </div>
                   {isSelected && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <motion.span
+                      layoutId="catSelectedDot"
+                      className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+                    />
                   )}
                 </div>
                 <div>
@@ -336,19 +378,22 @@ export const AskView: React.FC<AskViewProps> = ({
                     {meta.simpleTitle.split(',')[0]}
                   </div>
                 </div>
-              </button>
+              </motion.button>
             );
           })}
         </div>
       </div>
 
       {/* ========================================================
-          2. ACTIVE CATEGORY GUIDE & LESSONS (Simple English)
+          2. ACTIVE CATEGORY GUIDE & LESSONS (Animated Expandable)
          ======================================================== */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden transition-all">
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-50 via-indigo-50/30 to-purple-50/20 dark:from-slate-900 dark:via-indigo-950/20 dark:to-purple-950/20 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <motion.div
+        layout
+        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden transition-all"
+      >
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-50 via-indigo-50/40 to-purple-50/30 dark:from-slate-900 dark:via-indigo-950/20 dark:to-purple-950/20 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${currentCategoryData.badgeBg} ${currentCategoryData.badgeText} border ${currentCategoryData.borderClass}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${currentCategoryData.badgeBg} ${currentCategoryData.badgeText} border ${currentCategoryData.borderClass} shadow-2xs`}>
               <CategoryIcon className="w-5 h-5" />
             </div>
             <div>
@@ -370,93 +415,103 @@ export const AskView: React.FC<AskViewProps> = ({
             <button
               type="button"
               onClick={() => setShowCategoryIntelligence(!showCategoryIntelligence)}
-              className="text-xs text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 flex items-center gap-1 font-semibold cursor-pointer"
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 font-semibold cursor-pointer py-1 px-2.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
             >
-              <span>{showCategoryIntelligence ? 'Hide Tips & Lessons' : 'Show Tips & Lessons'}</span>
+              <span>{showCategoryIntelligence ? 'Hide Strategy Guide' : 'Show Strategy Guide'}</span>
               {showCategoryIntelligence ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
-        {showCategoryIntelligence && (
-          <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800/80 animate-fadeIn">
-            {/* What Usually Works in this Category */}
-            <div className="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/40 space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300 text-xs">
-                <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>What Usually Works in {currentCategoryData.shortLabel}</span>
-              </div>
-              <ul className="space-y-1.5 text-slate-700 dark:text-slate-300">
-                {currentCategoryData.provenPatterns.map((pat, idx) => (
-                  <li key={idx} className="flex items-start gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
-                    <span>{pat}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        <AnimatePresence>
+          {showCategoryIntelligence && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800/80">
+                {/* What Usually Works in this Category */}
+                <div className="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/40 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300 text-xs">
+                    <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>Proven Strategies for {currentCategoryData.shortLabel}</span>
+                  </div>
+                  <ul className="space-y-2 text-slate-700 dark:text-slate-300">
+                    {currentCategoryData.provenPatterns.map((pat, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{pat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-            {/* Common Mistakes to Avoid */}
-            <div className="p-3.5 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-300 text-xs">
-                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                <span>Common Mistakes to Avoid in {currentCategoryData.shortLabel}</span>
+                {/* Common Mistakes to Avoid */}
+                <div className="p-4 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-300 text-xs">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                    <span>Common Pitfalls to Avoid in {currentCategoryData.shortLabel}</span>
+                  </div>
+                  <ul className="space-y-2 text-slate-700 dark:text-slate-300">
+                    {currentCategoryData.commonPitfalls.map((pit, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0 mt-1.5" />
+                        <span className="leading-relaxed">{pit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <ul className="space-y-1.5 text-slate-700 dark:text-slate-300">
-                {currentCategoryData.commonPitfalls.map((pit, idx) => (
-                  <li key={idx} className="flex items-start gap-1.5">
-                    <span className="text-rose-500 font-bold flex-shrink-0">•</span>
-                    <span>{pit}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* View Mode Sub-tabs (Form vs Matching Cases vs Example Presets) */}
-        <div className="px-4 sm:px-5 py-2.5 bg-slate-50/80 dark:bg-slate-900/60 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-1">
+        <div className="px-4 sm:px-5 py-2 bg-slate-50/80 dark:bg-slate-900/60 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               id="tab-mode-form"
               onClick={() => setActiveTab('form')}
-              className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`relative px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'form'
                   ? 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-400 shadow-2xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>1. Fill in Your Details</span>
+              <span>1. Customize Your Situation</span>
             </button>
 
             <button
               type="button"
               id="tab-mode-experiences"
               onClick={() => setActiveTab('experiences')}
-              className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`relative px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'experiences'
                   ? 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-400 shadow-2xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>2. Real Stories in this Category ({categoryExperiences.length})</span>
+              <span>2. Real Stories ({categoryExperiences.length})</span>
             </button>
 
             <button
               type="button"
               id="tab-mode-presets"
               onClick={() => setActiveTab('patterns')}
-              className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`relative px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'patterns'
                   ? 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-400 shadow-2xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Lightbulb className="w-3.5 h-3.5" />
-              <span>3. Ready-Made Example Scenarios ({currentCategoryData.sampleScenarios.length})</span>
+              <span>3. Ready-Made Templates ({currentCategoryData.sampleScenarios.length})</span>
             </button>
           </div>
 
@@ -473,13 +528,18 @@ export const AskView: React.FC<AskViewProps> = ({
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ========================================================
-          3. TAB CONTENT: MATCHING PEER CASES IN THIS CATEGORY
+          3. TAB CONTENT: REAL COMMUNITY STORIES
          ======================================================== */}
       {activeTab === 'experiences' && (
-        <div className="space-y-4 animate-fadeIn">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="space-y-4"
+        >
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -514,9 +574,12 @@ export const AskView: React.FC<AskViewProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {categoryExperiences.map((exp) => (
-                <div
+              {categoryExperiences.map((exp, idx) => (
+                <motion.div
                   key={exp.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05, duration: 0.3 }}
                   className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-700 transition-all flex flex-col justify-between space-y-3"
                 >
                   <div className="space-y-2">
@@ -538,7 +601,7 @@ export const AskView: React.FC<AskViewProps> = ({
                       </span>
                       {exp.isDemo && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">
-                          EXAMPLE STORY
+                          COMMUNITY CASE
                         </span>
                       )}
                     </div>
@@ -550,9 +613,9 @@ export const AskView: React.FC<AskViewProps> = ({
                       {exp.situation}
                     </p>
 
-                    <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 text-[11px] text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800/60">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 text-[11px] text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800/60">
                       <strong className="text-indigo-700 dark:text-indigo-400 block mb-0.5">
-                        Main Lesson:
+                        Key Lesson Learned:
                       </strong>
                       <span className="italic">"{exp.lesson}"</span>
                     </div>
@@ -565,38 +628,46 @@ export const AskView: React.FC<AskViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleUseExperienceAsTemplate(exp)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold cursor-pointer transition-colors"
                     >
                       <Copy className="w-3 h-3" />
                       <span>Use as Template</span>
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* ========================================================
-          4. TAB CONTENT: READY-MADE EXAMPLE SCENARIOS
+          4. TAB CONTENT: READY-MADE TEMPLATES
          ======================================================== */}
       {activeTab === 'patterns' && (
-        <div className="space-y-4 animate-fadeIn">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="space-y-4"
+        >
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-amber-500" />
-              <span>Ready-Made Examples in {currentCategoryData.label}</span>
+              <span>Ready-Made Templates in {currentCategoryData.label}</span>
             </h3>
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              Pick one to fill the form in one click and edit it
+              Pick one to fill the form in one click and customize
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {currentCategoryData.sampleScenarios.map((sc, idx) => (
-              <div
+              <motion.div
                 key={idx}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05, duration: 0.3 }}
                 className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-700 transition-all flex flex-col justify-between space-y-3"
               >
                 <div className="space-y-2">
@@ -614,7 +685,7 @@ export const AskView: React.FC<AskViewProps> = ({
                   <p className="text-xs text-slate-600 dark:text-slate-400">
                     {sc.summary}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 italic bg-slate-50 dark:bg-slate-950 p-2 rounded-lg">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 italic bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl">
                     "{sc.data.problem}"
                   </p>
                 </div>
@@ -623,34 +694,37 @@ export const AskView: React.FC<AskViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleApplyPreset(sc)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors cursor-pointer"
                   >
                     <span>Load & Customize</span>
-                    <ArrowRight className="w-3 h-3" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* ========================================================
-          5. MAIN INQUIRY FORM (Category-Tailored in Simple English)
+          5. MAIN INQUIRY FORM (Interactive & Category Tailored)
          ======================================================== */}
       {activeTab === 'form' && (
-        <form
+        <motion.form
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-6 sm:p-8 space-y-7 animate-fadeIn"
+          className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-6 sm:p-8 space-y-7"
         >
           {/* AI Assistant Banner */}
           <AiWritingAssistantBanner />
 
-          {/* Category Tips Callout in Simple English */}
-          <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-2.5 text-xs text-indigo-950 dark:text-indigo-200">
+          {/* Category Tips Callout */}
+          <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-3 text-xs text-indigo-950 dark:text-indigo-200">
             <Lightbulb className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <strong>Quick Tips for {currentCategoryData.simpleTitle}:</strong>
+              <strong>Quick Focus for {currentCategoryData.simpleTitle}:</strong>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400">
                 {currentCategoryData.questions.tailoredTips.map((tip, idx) => (
                   <span key={idx} className="flex items-center gap-1">
@@ -662,7 +736,7 @@ export const AskView: React.FC<AskViewProps> = ({
             </div>
           </div>
 
-          {/* 1. Problem (Category-Tailored Question in Simple English) */}
+          {/* 1. Problem (Category-Tailored Question) */}
           <AiWritingField
             id="problem-textarea"
             fieldName="Problem Description"
@@ -680,21 +754,19 @@ export const AskView: React.FC<AskViewProps> = ({
             placeholder={currentCategoryData.questions.problemPlaceholder}
           />
 
-          {/* ========================================================
-              CATEGORY-SPECIFIC DETAIL QUESTIONS (Dynamic per category)
-             ======================================================== */}
+          {/* Dynamic Category-Specific Detail Fields */}
           <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-indigo-50/30 dark:from-slate-950 dark:to-indigo-950/20 border border-indigo-100/80 dark:border-indigo-900/40 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center">
+                <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-2xs">
                   <Sliders className="w-3.5 h-3.5" />
                 </div>
                 <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
-                  {currentCategoryData.shortLabel} Details (Helps us find closer matches)
+                  {currentCategoryData.shortLabel} Specific Details (Helps match closest trials)
                 </h3>
               </div>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
-                Click a quick suggestion or type your own
+                Click a suggestion chip or type custom value
               </span>
             </div>
 
@@ -725,7 +797,7 @@ export const AskView: React.FC<AskViewProps> = ({
                               onClick={() => handleCategoryDetailChange(field.id, sug)}
                               className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer flex items-center gap-1 ${
                                 isSelected
-                                  ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
+                                  ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
                                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-300'
                               }`}
                             >
@@ -742,7 +814,7 @@ export const AskView: React.FC<AskViewProps> = ({
             </div>
           </div>
 
-          {/* 2. Context (Category-Tailored Question in Simple English) */}
+          {/* 2. Context Field */}
           <AiWritingField
             id="context-textarea"
             fieldName="Background Details"
@@ -759,7 +831,7 @@ export const AskView: React.FC<AskViewProps> = ({
             placeholder={currentCategoryData.questions.contextPlaceholder}
           />
 
-          {/* 3. Goal & What Tried (Category-Tailored in Simple English) */}
+          {/* 3. Goal & What Already Tried */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <AiWritingField
               type="input"
@@ -794,13 +866,13 @@ export const AskView: React.FC<AskViewProps> = ({
             />
           </div>
 
-          {/* 4. Limits & Resources (Simple English) */}
-          <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          {/* 4. Constraints / Resources Limits */}
+          <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5">
               <span className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                5. Your Limits & Available Resources (Optional)
+                Constraints & Available Resources (Optional)
               </span>
-              <Tooltip content="Tell us about your time and budget so we suggest realistic steps" position="top">
+              <Tooltip content="Tell us about your time and budget limits so recommendations are realistic" position="top">
                 <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
               </Tooltip>
             </div>
@@ -814,7 +886,7 @@ export const AskView: React.FC<AskViewProps> = ({
                 value={timeConstraint}
                 onChange={setTimeConstraint}
                 placeholder="e.g. 30 days, 2 hrs/day"
-                inputClassName="text-xs p-2.5 rounded-lg"
+                inputClassName="text-xs p-2.5 rounded-xl"
               />
 
               <AiWritingField
@@ -826,7 +898,7 @@ export const AskView: React.FC<AskViewProps> = ({
                 value={budget}
                 onChange={setBudget}
                 placeholder="e.g. $0, Under $50"
-                inputClassName="text-xs p-2.5 rounded-lg"
+                inputClassName="text-xs p-2.5 rounded-xl"
               />
 
               <AiWritingField
@@ -838,7 +910,7 @@ export const AskView: React.FC<AskViewProps> = ({
                 value={experienceLevel}
                 onChange={setExperienceLevel}
                 placeholder="e.g. Beginner, 2 years"
-                inputClassName="text-xs p-2.5 rounded-lg"
+                inputClassName="text-xs p-2.5 rounded-xl"
               />
 
               <AiWritingField
@@ -850,72 +922,65 @@ export const AskView: React.FC<AskViewProps> = ({
                 value={resources}
                 onChange={setResources}
                 placeholder="e.g. Laptop, Books"
-                inputClassName="text-xs p-2.5 rounded-lg"
+                inputClassName="text-xs p-2.5 rounded-xl"
               />
             </div>
           </div>
 
-          {/* 5. Category & Urgency */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="space-y-1.5">
+          {/* 5. Urgency Selection */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <div className="flex items-center gap-1.5">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                Change Category
+                Timeline Urgency
               </label>
-              <select
-                id="category-select"
-                value={category}
-                onChange={(e) => setCategory(e.target.value as Category)}
-                className="w-full text-sm p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950 outline-hidden cursor-pointer"
-              >
-                {ALL_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+              <Tooltip content="Pick 'High' if you have a tight deadline and need rapid action steps" position="top">
+                <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+              </Tooltip>
             </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  How Fast Do You Need Results?
-                </label>
-                <Tooltip content="Pick 'High' if you have a close deadline or need immediate relief" position="top">
-                  <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
-                </Tooltip>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {(['low', 'medium', 'high'] as UrgencyLevel[]).map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    id={`urgency-${level}-btn`}
-                    onClick={() => setUrgency(level)}
-                    className={`py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer ${
-                      urgency === level
-                        ? level === 'high'
-                          ? 'bg-rose-50 dark:bg-rose-950/80 border-rose-500 text-rose-800 dark:text-rose-300 ring-2 ring-rose-200 dark:ring-rose-900'
-                          : level === 'medium'
-                          ? 'bg-amber-50 dark:bg-amber-950/80 border-amber-500 text-amber-800 dark:text-amber-300 ring-2 ring-amber-200 dark:ring-amber-900'
-                          : 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-200 dark:ring-emerald-900'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-xl">
+              {(['low', 'medium', 'high'] as UrgencyLevel[]).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  id={`urgency-${level}-btn`}
+                  onClick={() => setUrgency(level)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    urgency === level
+                      ? level === 'high'
+                        ? 'bg-rose-50 dark:bg-rose-950/80 border-rose-500 text-rose-800 dark:text-rose-300 ring-2 ring-rose-200 dark:ring-rose-900 shadow-2xs'
+                        : level === 'medium'
+                        ? 'bg-amber-50 dark:bg-amber-950/80 border-amber-500 text-amber-800 dark:text-amber-300 ring-2 ring-amber-200 dark:ring-amber-900 shadow-2xs'
+                        : 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-200 dark:ring-emerald-900 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      level === 'high'
+                        ? 'bg-rose-500'
+                        : level === 'medium'
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500'
                     }`}
-                  >
-                    {level === 'low' ? 'Low (No Rush)' : level === 'medium' ? 'Medium (Normal)' : 'High (Urgent)'}
-                  </button>
-                ))}
-              </div>
+                  />
+                  <span>{level === 'low' ? 'Low' : level === 'medium' ? 'Medium' : 'High'}</span>
+                </button>
+              ))}
             </div>
           </div>
 
           {error && (
-            <div className="p-3.5 bg-rose-50 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 text-xs rounded-xl border border-rose-200 dark:border-rose-800 flex items-center gap-2">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-3.5 bg-rose-50 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 text-xs rounded-2xl border border-rose-200 dark:border-rose-800 flex items-center gap-2"
+            >
               <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
               <span>{error}</span>
-            </div>
+            </motion.div>
           )}
 
-          {/* Actions & Submit Button */}
+          {/* Form Actions & Animated Submit Button */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
@@ -923,77 +988,125 @@ export const AskView: React.FC<AskViewProps> = ({
               className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Clear Everything</span>
+              <span>Reset Form</span>
             </button>
 
-            <Tooltip content={`Match with real ${category} experiences and create your plan`} position="top">
-              <button
+            <Tooltip content={`Synthesize with real ${category} experiences to produce an action plan`} position="top">
+              <motion.button
                 type="submit"
                 id="analyze-situation-btn"
                 disabled={isLoading}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-bold text-sm text-white bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 shadow-md transition-all cursor-pointer"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-slate-900 via-indigo-900 to-indigo-700 dark:from-indigo-600 dark:via-indigo-600 dark:to-indigo-500 hover:shadow-lg hover:shadow-indigo-500/20 shadow-md transition-all cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
                 <span>Get {currentCategoryData.shortLabel} Action Plan</span>
-              </button>
+                <ArrowRight className="w-4 h-4 text-indigo-200" />
+              </motion.button>
             </Tooltip>
           </div>
-        </form>
+        </motion.form>
       )}
 
       {/* ========================================================
-          6. SIMPLE ENGLISH LOADING OVERLAY
+          6. ANIMATED MULTI-STAGE ANALYSIS LOADING OVERLAY
          ======================================================== */}
-      {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6 text-center">
-            <div className="relative w-16 h-16 mx-auto">
-              <div className="w-16 h-16 rounded-full border-4 border-indigo-100 dark:border-indigo-950 border-t-indigo-600 dark:border-t-indigo-400 animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center font-bold text-xs text-indigo-600 dark:text-indigo-400">
-                {currentCategoryData.shortLabel.substring(0, 2).toUpperCase()}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-6 text-center overflow-hidden relative"
+            >
+              {/* Top ambient glow bar */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-emerald-400 to-purple-500 animate-pulse" />
+
+              {/* Animated Neural Scanner Orbit */}
+              <div className="relative w-20 h-20 mx-auto mt-2">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+                  className="w-20 h-20 rounded-full border-2 border-indigo-500/30 border-t-indigo-600 dark:border-t-indigo-400"
+                />
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ repeat: Infinity, duration: 4.5, ease: 'linear' }}
+                  className="absolute inset-2 rounded-full border-2 border-emerald-500/30 border-b-emerald-400"
+                />
+                <div className="absolute inset-0 flex items-center justify-center font-extrabold text-sm text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 rounded-full m-4 shadow-inner">
+                  {currentCategoryData.shortLabel.substring(0, 2).toUpperCase()}
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">
-                Analyzing Your {currentCategoryData.shortLabel} Question
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Looking for real-world stories and proven lessons that match your exact situation
-              </p>
-            </div>
+              <div className="space-y-1.5">
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">
+                  Synthesizing {currentCategoryData.shortLabel} Experience
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Grounding AI recommendations with real-world outcomes and lessons
+                </p>
+              </div>
 
-            {/* Stage tracker */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 text-left space-y-2.5">
-              {SIMPLE_LOADING_STAGES.map((stage, idx) => {
-                const isDone = idx < currentStageIdx;
-                const isCurrent = idx === currentStageIdx;
-                return (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-2.5 text-xs transition-all ${
-                      isCurrent
-                        ? 'font-bold text-indigo-700 dark:text-indigo-400'
-                        : isDone
-                        ? 'text-emerald-700 dark:text-emerald-400 line-through opacity-70'
-                        : 'text-slate-400 dark:text-slate-600'
-                    }`}
-                  >
-                    {isDone ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                    ) : isCurrent ? (
-                      <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-ping flex-shrink-0" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700 flex-shrink-0" />
-                    )}
-                    <span>{stage}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Animated Stage Tracker */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800 text-left space-y-2.5">
+                {SIMPLE_LOADING_STAGES.map((stage, idx) => {
+                  const isDone = idx < currentStageIdx;
+                  const isCurrent = idx === currentStageIdx;
+
+                  return (
+                    <motion.div
+                      key={idx}
+                      initial={false}
+                      animate={{
+                        opacity: isCurrent ? 1 : isDone ? 0.7 : 0.4,
+                        x: isCurrent ? 4 : 0,
+                      }}
+                      transition={{ duration: 0.2 }}
+                      className={`flex items-center gap-2.5 text-xs ${
+                        isCurrent
+                          ? 'font-bold text-indigo-700 dark:text-indigo-400'
+                          : isDone
+                          ? 'text-emerald-700 dark:text-emerald-400 font-medium'
+                          : 'text-slate-400 dark:text-slate-600'
+                      }`}
+                    >
+                      {isDone ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                      ) : isCurrent ? (
+                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-ping flex-shrink-0" />
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700 flex-shrink-0" />
+                      )}
+                      <span className="truncate">{stage}</span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                <motion.div
+                  className="bg-gradient-to-r from-indigo-500 via-emerald-400 to-indigo-600 h-full rounded-full"
+                  initial={{ width: '10%' }}
+                  animate={{
+                    width: `${Math.min(100, Math.round(((currentStageIdx + 1) / SIMPLE_LOADING_STAGES.length) * 100))}%`,
+                  }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

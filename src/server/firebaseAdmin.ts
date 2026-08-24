@@ -5,12 +5,17 @@ import fs from 'fs';
 import path from 'path';
 
 let projectId = 'gen-lang-client-0099952485';
+let databaseId = 'ai-studio-commonmind-1be402e9-53c6-4be5-bf36-4a58c66ba872';
+
 try {
   const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
   if (fs.existsSync(configPath)) {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     if (config.projectId) {
       projectId = config.projectId;
+    }
+    if (config.firestoreDatabaseId) {
+      databaseId = config.firestoreDatabaseId;
     }
   }
 } catch (e) {
@@ -27,4 +32,5 @@ if (!getApps().length) {
 }
 
 export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app);
+export const adminDb = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
+

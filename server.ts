@@ -489,10 +489,11 @@ app.post('/api/experiences', authMiddleware, experienceCreationLimiter, async (r
     }
 
     const clean = moderation.sanitized;
+    const authorUid = (req as any).user?.uid || 'anonymous';
     const newExp: Experience = {
       id: `exp-user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      userId: clean.isAnonymous ? 'anonymous' : (req as any).user.uid,
-      authorName: clean.authorName || 'Community Contributor',
+      userId: authorUid,
+      authorName: clean.isAnonymous ? 'Anonymous Contributor' : (clean.authorName || 'Community Contributor'),
       isAnonymous: Boolean(clean.isAnonymous),
       isDemo: false, // Explicitly a REAL COMMUNITY EXPERIENCE
       title: clean.title || 'Community Experience',
@@ -560,21 +561,44 @@ app.post('/api/experiences/:id/vote', optionalAuthMiddleware, async (req: Reques
   res.json({ success: true, usefulCount: exp.usefulCount, notUsefulCount: exp.notUsefulCount });
 });
 
-// DELETE /api/experiences/:id (Delete an experience)
+// DELETE /api/experiences/:id (Delete an experience - author only)
 app.delete('/api/experiences/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const currentUid = (req as any).user?.uid;
     const realIndex = realExperiencesDB.findIndex((e) => e.id === id);
     const demoIndex = demoExperiencesDB.findIndex((e) => e.id === id);
 
     if (realIndex === -1 && demoIndex === -1) {
+      // Check in Firestore directly
+      try {
+        const docSnap = await adminDb.collection('experiences').doc(id).get();
+        if (docSnap.exists) {
+          const docData = docSnap.data() as Experience;
+          if (docData && docData.userId && currentUid && docData.userId !== currentUid) {
+            res.status(403).json({ success: false, message: 'Unauthorized: You can only delete experiences that you posted.' });
+            return;
+          }
+          await adminDb.collection('experiences').doc(id).delete();
+          res.json({
+            success: true,
+            message: 'Experience deleted successfully.',
+            deletedId: id,
+          });
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
       res.status(404).json({ success: false, message: 'Experience not found.' });
       return;
     }
 
     if (realIndex !== -1) {
-      if (realExperiencesDB[realIndex].userId !== (req as any).user.uid) {
-        res.status(403).json({ success: false, message: 'Unauthorized: Cannot delete this experience.' });
+      const targetExp = realExperiencesDB[realIndex];
+      // STRICT CHECK: only the author who posted this experience can delete it
+      if (targetExp.userId && currentUid && targetExp.userId !== currentUid) {
+        res.status(403).json({ success: false, message: 'Unauthorized: You can only delete experiences that you posted.' });
         return;
       }
       realExperiencesDB.splice(realIndex, 1);
@@ -911,8 +935,10 @@ app.post('/api/solutions/:id/outcome', optionalAuthMiddleware, (req: Request, re
     // If user opts to share what they learned, convert into a real community experience!
     if (shareAsPublicExperience !== false) {
       generatedExpId = `exp-user-outcome-${Date.now()}`;
+      const outcomeAuthorUid = (req as any).user?.uid || undefined;
       generatedExperience = {
         id: generatedExpId,
+        userId: outcomeAuthorUid,
         authorName: isAnonymous ? 'Anonymous Contributor' : authorName?.trim() || 'Community Contributor',
         isAnonymous: Boolean(isAnonymous),
         isDemo: false, // Explicitly a REAL community experience

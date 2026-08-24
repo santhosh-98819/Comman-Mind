@@ -144,6 +144,15 @@ export async function submitExperience(exp: Partial<Experience>): Promise<Experi
 
 export async function deleteExperience(id: string): Promise<{ success: boolean; message?: string }> {
   try {
+    // Attempt Firestore direct deletion as well for instant cross-tab sync if authenticated
+    try {
+      const { deleteDoc, doc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      await deleteDoc(doc(db, 'experiences', id));
+    } catch (fsErr) {
+      // Optional direct delete fallback
+    }
+
     const res = await fetch(`/api/experiences/${id}`, {
       method: 'DELETE',
       headers: await getAuthHeaders(),

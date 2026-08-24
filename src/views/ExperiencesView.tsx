@@ -305,7 +305,6 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
               key={exp.id}
               experience={exp}
               showRelevance={false}
-              canDelete={true}
               onDelete={handleDeleteExperience}
             />
           ))}

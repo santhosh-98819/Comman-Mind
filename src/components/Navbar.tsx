@@ -13,30 +13,56 @@ import {
   LogOut,
   Sun,
   Moon,
-  Monitor,
+  ChevronRight,
+  BookOpen,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Tooltip } from './Tooltip';
 import { ViewMode } from '../App';
+import { UserProfile } from '../types';
 
 interface NavbarProps {
   currentView: ViewMode;
   onNavigate: (view: ViewMode) => void;
+  user?: UserProfile;
+  onOpenAuth?: () => void;
   activeSolutionsCount?: number;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  currentView,
+  onNavigate,
+  activeSolutionsCount = 0,
+}) => {
   const { currentUser, userProfile, isGuest, logout } = useAuth();
   const { themePreference, resolvedTheme, setThemePreference, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems = [
-    { id: 'home' as ViewMode, label: 'Home', icon: Compass, tooltip: 'Return to Common Mind homepage' },
-    { id: 'ask' as ViewMode, label: 'Ask Common Mind', icon: Sparkles, highlight: true, tooltip: 'Get AI recommendations grounded in real human trials' },
-    { id: 'experiences' as ViewMode, label: 'Experiences', icon: Compass, tooltip: 'Explore community experiences and what others learned' },
-    { id: 'solutions' as ViewMode, label: 'My Solutions', icon: CheckSquare, tooltip: 'Track your active action plans and testing outcomes' },
-    { id: 'dashboard' as ViewMode, label: 'Dashboard', icon: LayoutDashboard, tooltip: 'Your personal problem-solving dashboard and impact metrics' },
+  const navItems: {
+    id: ViewMode;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    tooltip: string;
+    badgeCount?: number;
+  }[] = [
+    { id: 'home', label: 'Home', icon: Compass, tooltip: 'Home - Community problems and solutions' },
+    {
+      id: 'ask',
+      label: 'Ask Common Mind',
+      icon: Sparkles,
+      tooltip: 'Get AI recommendations grounded in real human trials',
+    },
+    { id: 'experiences', label: 'Stories', icon: BookOpen, tooltip: 'Browse verified peer experiences' },
+    {
+      id: 'solutions',
+      label: 'My Plans',
+      icon: CheckSquare,
+      tooltip: 'Track your active action plans and outcomes',
+      badgeCount: activeSolutionsCount > 0 ? activeSolutionsCount : undefined,
+    },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, tooltip: 'Your personal problem-solving dashboard' },
   ];
 
   const handleNav = (id: ViewMode) => {
@@ -51,83 +77,93 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
 
   const displayName = userProfile?.displayName || userProfile?.name || currentUser?.displayName || 'Profile';
   const initialLetter = displayName.charAt(0).toUpperCase();
+  const bannerURL = userProfile?.bannerURL;
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-18">
-          {/* Logo Brand */}
+        <div className="flex items-center justify-between h-16 sm:h-18 gap-4 md:gap-6 lg:gap-8">
+          {/* Left: Brand Logo & Title */}
           <div
             id="brand-logo-btn"
             onClick={() => handleNav('home')}
-            className="flex items-center gap-3 cursor-pointer group select-none"
+            className="flex items-center gap-3 cursor-pointer group select-none flex-shrink-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 dark:from-indigo-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center text-white shadow-sm ring-1 ring-slate-800/10 dark:ring-white/10 group-hover:scale-105 transition-transform duration-200">
-              <div className="relative">
-                <span className="font-serif font-black text-lg tracking-tight">CM</span>
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
-              </div>
+            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-indigo-900 dark:from-indigo-950 dark:via-slate-900 dark:to-indigo-900 flex items-center justify-center text-white shadow-xs ring-1 ring-slate-800/10 dark:ring-white/15 group-hover:scale-105 transition-transform duration-200">
+              <span className="font-serif font-black text-sm tracking-tight text-indigo-100">CM</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-slate-900" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white">
-                  COMMON MIND
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border border-indigo-100 dark:border-indigo-800/60 hidden sm:inline-block">
-                  AI + Experience
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium tracking-tight hidden md:block">
-                Real Experiences. Real Solutions.
-              </p>
+            <div className="flex items-baseline gap-2">
+              <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white">
+                COMMON MIND
+              </span>
+              <span className="hidden xl:inline-block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/50 uppercase tracking-wider">
+                AI + Human Data
+              </span>
             </div>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-1.5">
+          {/* Center: Normal & Spaced Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-2 lg:gap-3 flex-1 justify-center max-w-2xl">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentView === item.id;
-              if (item.highlight) {
-                return (
-                  <Tooltip key={item.id} content={item.tooltip} position="bottom">
-                    <button
-                      id={`nav-btn-${item.id}`}
-                      onClick={() => handleNav(item.id)}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm cursor-pointer ${
-                        isActive
-                          ? 'bg-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-950 ring-2 ring-indigo-600 ring-offset-2 dark:ring-offset-slate-900'
-                          : 'bg-slate-900 dark:bg-indigo-600 text-white hover:bg-indigo-700 dark:hover:bg-indigo-500 hover:shadow'
-                      }`}
-                    >
-                      <Sparkles className="w-4 h-4 text-emerald-300" />
-                      <span>{item.label}</span>
-                    </button>
-                  </Tooltip>
-                );
-              }
+
               return (
                 <Tooltip key={item.id} content={item.tooltip} position="bottom">
                   <button
                     id={`nav-btn-${item.id}`}
                     onClick={() => handleNav(item.id)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                    className={`relative inline-flex items-center gap-2 px-3 py-2 lg:px-3.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
                       isActive
-                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/50 font-bold border border-indigo-100 dark:border-indigo-800/60'
-                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/80'
+                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/90 dark:bg-indigo-950/70 font-semibold shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/70'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-400'}`} />
+                    <Icon
+                      className={`w-4 h-4 transition-colors ${
+                        isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+                      }`}
+                    />
                     <span>{item.label}</span>
+                    {item.badgeCount !== undefined && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">
+                        {item.badgeCount}
+                      </span>
+                    )}
                   </button>
                 </Tooltip>
               );
             })}
           </nav>
 
-          {/* User Account & Theme Toggle Controls */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
-            {/* Desktop Theme Switcher Button */}
+          {/* Right: Actions, Theme & User Auth with Generous Spacing */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {/* Quick Share Button */}
+            <Tooltip content="Share a challenge you faced and what you learned" position="bottom">
+              <button
+                id="share-exp-nav-btn"
+                onClick={() => handleNav('share-experience')}
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80 transition-colors cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>Share</span>
+              </button>
+            </Tooltip>
+
+            {/* Quick Tour Button */}
+            <Tooltip content="Interactive 8-step guide to how Common Mind works" position="bottom">
+              <button
+                id="get-started-nav-btn"
+                onClick={() => handleNav('onboarding')}
+                className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer hidden sm:flex items-center justify-center"
+                aria-label="How it works tour"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
+            </Tooltip>
+
+            {/* Theme Toggle Button with Motion */}
             <Tooltip
               content={
                 themePreference === 'system'
@@ -139,88 +175,78 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
               <button
                 id="desktop-theme-toggle-btn"
                 onClick={toggleTheme}
-                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
               >
-                {resolvedTheme === 'dark' ? (
-                  <Sun className="w-4 h-4 text-amber-400 animate-fadeIn" />
-                ) : (
-                  <Moon className="w-4 h-4 text-indigo-600 animate-fadeIn" />
-                )}
+                <motion.div
+                  key={resolvedTheme}
+                  initial={{ rotate: -30, opacity: 0, scale: 0.8 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {resolvedTheme === 'dark' ? (
+                    <Sun className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <Moon className="w-4 h-4 text-indigo-600" />
+                  )}
+                </motion.div>
               </button>
             </Tooltip>
 
-            {/* Get Started Button */}
-            <Tooltip content="Interactive 8-step guide to how Common Mind works" position="bottom">
-              <button
-                id="get-started-nav-btn"
-                onClick={() => handleNav('onboarding')}
-                className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/60 transition-colors cursor-pointer"
-              >
-                <HelpCircle className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Get Started</span>
-              </button>
-            </Tooltip>
-
-            {/* Share Experience Button */}
-            <Tooltip content="Share what you tried, what happened, and what you learned to help future users" position="bottom">
-              <button
-                id="share-exp-nav-btn"
-                onClick={() => handleNav('share-experience')}
-                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-              >
-                <PlusCircle className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
-                <span>Share Experience</span>
-              </button>
-            </Tooltip>
-
+            {/* User Profile Pill with Banner Theme Styling */}
             {currentUser && !isGuest ? (
               <div className="flex items-center gap-2">
-                <Tooltip content="View and edit your personal profile and preferences" position="bottom">
+                <Tooltip content="View personal profile and saved solutions" position="bottom">
                   <button
                     id="user-profile-nav-btn"
                     onClick={() => handleNav('profile')}
-                    className={`group relative overflow-hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border shadow-2xs transition-all cursor-pointer ${
+                    className={`relative group overflow-hidden inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl text-xs font-semibold border transition-all cursor-pointer shadow-xs ${
                       currentView === 'profile'
-                        ? 'border-indigo-400 dark:border-indigo-600 ring-2 ring-indigo-600 ring-offset-1 dark:ring-offset-slate-900 text-white'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-white'
+                        ? 'border-indigo-500 ring-2 ring-indigo-400/40 text-white'
+                        : 'border-slate-300/80 dark:border-slate-700/80 hover:border-indigo-400 dark:hover:border-indigo-500 text-white'
                     }`}
                   >
-                    {/* User Banner Backdrop */}
-                    {userProfile?.bannerURL ? (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                        style={{ backgroundImage: `url(${userProfile.bannerURL})` }}
-                      >
-                        <div className="absolute inset-0 bg-slate-950/65 dark:bg-slate-950/75 backdrop-blur-[0.5px]" />
+                    {/* Banner Theme Background */}
+                    {bannerURL ? (
+                      <div className="absolute inset-0 z-0">
+                        <img
+                          src={bannerURL}
+                          alt="Banner Theme"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/65 group-hover:bg-slate-950/50 backdrop-blur-[0.5px] transition-colors" />
                       </div>
                     ) : (
-                      <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 opacity-95 transition-transform duration-500 group-hover:scale-105">
-                        <div className="absolute inset-0 bg-slate-950/40" />
-                      </div>
+                      <div className="absolute inset-0 z-0 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 group-hover:from-indigo-950 group-hover:to-slate-900 transition-colors" />
                     )}
 
-                    <div className="relative z-10 flex items-center gap-2">
+                    {/* Avatar with Glow Ring */}
+                    <div className="relative z-10 flex-shrink-0">
                       {userProfile?.photoURL ? (
                         <img
                           src={userProfile.photoURL}
                           alt="Avatar"
                           referrerPolicy="no-referrer"
-                          className="w-6 h-6 rounded-full object-cover border-2 border-white/80 dark:border-slate-200 shadow-xs flex-shrink-0"
+                          className="w-6 h-6 rounded-full object-cover border border-white/80 shadow-xs"
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs ring-1 ring-white/70 shadow-xs flex-shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[11px] border border-white/80 shadow-xs">
                           {initialLetter}
                         </div>
                       )}
-                      <span className="max-w-[110px] truncate hidden sm:inline-block font-bold text-white drop-shadow-xs">
+                    </div>
+
+                    {/* Display Name & Subtle Badge */}
+                    <div className="relative z-10 text-left leading-tight hidden sm:block">
+                      <span className="max-w-[100px] truncate block text-xs font-bold text-white tracking-tight drop-shadow-xs">
                         {displayName}
                       </span>
                     </div>
                   </button>
                 </Tooltip>
 
-                <Tooltip content="Sign out of your Common Mind account" position="bottom">
+                <Tooltip content="Sign out" position="bottom">
                   <button
                     id="nav-logout-btn"
                     onClick={handleLogout}
@@ -232,32 +258,31 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
                 </Tooltip>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-2.5">
                 <button
                   id="nav-login-btn"
                   onClick={() => handleNav('login')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
-                  <LogIn className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                  <span>Log In</span>
+                  Log In
                 </button>
 
                 <button
                   id="nav-signup-btn"
                   onClick={() => handleNav('signup')}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 shadow-2xs transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 shadow-2xs transition-all cursor-pointer"
                 >
-                  <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Sign Up</span>
+                  <UserPlus className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Join</span>
                 </button>
               </div>
             )}
 
-            {/* Mobile menu toggle */}
+            {/* Mobile Menu Toggle Button */}
             <button
               id="mobile-menu-toggle-btn"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -266,178 +291,179 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
         </div>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-3 pb-5 space-y-2 shadow-lg animate-fadeIn">
-          {/* Mobile Profile Pill for quick access */}
-          {currentUser && !isGuest && (
-            <button
-              id="mobile-profile-direct-btn"
-              onClick={() => handleNav('profile')}
-              className={`group relative overflow-hidden w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-                currentView === 'profile'
-                  ? 'border-indigo-400 ring-2 ring-indigo-500 shadow-md'
-                  : 'border-slate-200 dark:border-slate-700 shadow-xs hover:border-slate-300'
-              }`}
-            >
-              {/* Mobile Drawer Banner Background */}
-              {userProfile?.bannerURL ? (
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                  style={{ backgroundImage: `url(${userProfile.bannerURL})` }}
+      {/* Mobile Animated Drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 pt-3 pb-5 space-y-3 shadow-xl overflow-hidden"
+          >
+            {/* Quick Profile Banner Pill in Mobile Drawer */}
+            {currentUser && !isGuest && (
+              <div
+                onClick={() => handleNav('profile')}
+                className="relative overflow-hidden flex items-center justify-between p-3.5 rounded-2xl border border-slate-300/80 dark:border-slate-700 cursor-pointer group shadow-sm"
+              >
+                {/* Banner background */}
+                {bannerURL ? (
+                  <div className="absolute inset-0 z-0">
+                    <img
+                      src={bannerURL}
+                      alt="Banner Theme"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover object-center"
+                    />
+                    <div className="absolute inset-0 bg-slate-950/70" />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 z-0 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900" />
+                )}
+
+                <div className="relative z-10 flex items-center gap-3">
+                  {userProfile?.photoURL ? (
+                    <img
+                      src={userProfile.photoURL}
+                      alt="Avatar"
+                      className="w-9 h-9 rounded-full object-cover border-2 border-white/80 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs border-2 border-white/80 shadow-xs">
+                      {initialLetter}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-bold text-white leading-tight">{displayName}</p>
+                    <p className="text-[11px] text-slate-300 truncate max-w-[180px]">
+                      {currentUser.email || 'Common Mind Member'}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/80 relative z-10" />
+              </div>
+            )}
+
+            {/* Mobile Nav Links */}
+            <div className="space-y-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNav(item.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                      isActive
+                        ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-100 dark:border-indigo-800/60'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon
+                        className={`w-4 h-4 ${
+                          isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-400'
+                        }`}
+                      />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badgeCount !== undefined && (
+                      <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold px-2 py-0.5 rounded-full">
+                        {item.badgeCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Mobile Actions: Share & Tour */}
+            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => handleNav('share-experience')}
+                className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+              >
+                <PlusCircle className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>Share Story</span>
+              </button>
+
+              <button
+                onClick={() => handleNav('onboarding')}
+                className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/50"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>Guide / Tour</span>
+              </button>
+            </div>
+
+            {/* Theme switcher */}
+            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs">
+              <span className="font-semibold text-slate-600 dark:text-slate-300">Theme</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setThemePreference('light')}
+                  className={`px-2 py-1 rounded-lg font-bold text-[11px] ${
+                    themePreference === 'light'
+                      ? 'bg-white dark:bg-slate-700 text-amber-600 shadow-2xs'
+                      : 'text-slate-500'
+                  }`}
                 >
-                  <div className="absolute inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-[0.5px]" />
+                  Light
+                </button>
+                <button
+                  onClick={() => setThemePreference('dark')}
+                  className={`px-2 py-1 rounded-lg font-bold text-[11px] ${
+                    themePreference === 'dark'
+                      ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-500'
+                  }`}
+                >
+                  Dark
+                </button>
+                <button
+                  onClick={() => setThemePreference('system')}
+                  className={`px-2 py-1 rounded-lg font-bold text-[11px] ${
+                    themePreference === 'system'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-2xs'
+                      : 'text-slate-500'
+                  }`}
+                >
+                  System
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Auth action */}
+            <div className="pt-1">
+              {!currentUser || isGuest ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleNav('login')}
+                    className="w-full py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 text-center"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => handleNav('signup')}
+                    className="w-full py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 text-center"
+                  >
+                    Sign Up
+                  </button>
                 </div>
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 opacity-95">
-                  <div className="absolute inset-0 bg-slate-950/50" />
-                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 text-center flex items-center justify-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out</span>
+                </button>
               )}
-
-              <div className="relative z-10 flex items-center gap-3">
-                {userProfile?.photoURL ? (
-                  <img
-                    src={userProfile.photoURL}
-                    alt="Avatar"
-                    referrerPolicy="no-referrer"
-                    className="w-10 h-10 rounded-xl object-cover border-2 border-white/90 shadow-md flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-white/70 flex-shrink-0">
-                    {initialLetter}
-                  </div>
-                )}
-                <div className="text-left">
-                  <p className="font-bold text-sm leading-tight text-white drop-shadow-xs">{displayName}</p>
-                  <p className="text-[11px] text-slate-200/80 drop-shadow-xs truncate max-w-[170px]">{currentUser.email || 'Common Mind Member'}</p>
-                </div>
-              </div>
-              <span className="relative z-10 text-xs font-bold text-white bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/30 shadow-xs">
-                View Profile
-              </span>
-            </button>
-          )}
-
-          {/* Mobile Appearance / Theme Control Segmented Switcher */}
-          <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 space-y-2">
-            <div className="flex items-center justify-between px-1 text-xs font-bold text-slate-600 dark:text-slate-300">
-              <span>Theme / Appearance</span>
-              <span className="text-[10px] font-semibold text-slate-400 capitalize">{themePreference}</span>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                onClick={() => setThemePreference('light')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all ${
-                  themePreference === 'light'
-                    ? 'bg-white dark:bg-slate-700 text-amber-600 shadow-xs ring-1 ring-slate-300 dark:ring-slate-600'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                <span>Light</span>
-              </button>
-
-              <button
-                onClick={() => setThemePreference('dark')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all ${
-                  themePreference === 'dark'
-                    ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
-                <Moon className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Dark</span>
-              </button>
-
-              <button
-                onClick={() => setThemePreference('system')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all ${
-                  themePreference === 'system'
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs ring-1 ring-slate-300 dark:ring-slate-600'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
-                <Monitor className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                <span>System</span>
-              </button>
-            </div>
-          </div>
-
-          <button
-            onClick={() => handleNav('onboarding')}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800/60"
-          >
-            <div className="flex items-center gap-2.5">
-              <HelpCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Get Started (Interactive Guide)</span>
-            </div>
-            <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-semibold">
-              Tour
-            </span>
-          </button>
-
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentView === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNav(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-100 dark:border-indigo-800/60'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`} />
-                  <span>{item.label}</span>
-                </div>
-                {item.highlight && (
-                  <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
-                    Solve
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
-            <button
-              onClick={() => handleNav('share-experience')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Share What You Learned</span>
-            </button>
-
-            {!currentUser || isGuest ? (
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  onClick={() => handleNav('login')}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-center"
-                >
-                  Log In
-                </button>
-                <button
-                  onClick={() => handleNav('signup')}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-center"
-                >
-                  Sign Up
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleLogout}
-                className="w-full py-2.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-center flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Log Out ({displayName})</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };
