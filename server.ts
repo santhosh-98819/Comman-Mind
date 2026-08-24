@@ -412,12 +412,16 @@ function generateFallbackAnalysis(
 
 // Health Check
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    totalRealExperiences: realExperiencesDB.length,
-    totalDemoExperiences: demoExperiencesDB.length,
-  });
+  try {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      totalRealExperiences: realExperiencesDB.length,
+      totalDemoExperiences: demoExperiencesDB.length,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Health check failed.' });
+  }
 });
 
 // GET /api/experiences (Search, filter, paginate - by default only returns real community experiences)
@@ -534,31 +538,35 @@ app.post('/api/experiences', authMiddleware, experienceCreationLimiter, async (r
 
 // POST /api/experiences/:id/vote (Upvote/Downvote usefulness)
 app.post('/api/experiences/:id/vote', optionalAuthMiddleware, async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { vote } = req.body; // 'useful' | 'not_useful'
-
-  const exp = realExperiencesDB.find((e) => e.id === id) || demoExperiencesDB.find((e) => e.id === id);
-  if (!exp) {
-    res.status(404).json({ success: false, message: 'Experience not found.' });
-    return;
-  }
-
-  if (vote === 'useful') {
-    exp.usefulCount += 1;
-  } else if (vote === 'not_useful') {
-    exp.notUsefulCount += 1;
-  }
-
   try {
-    await adminDb.collection('experiences').doc(id).set({
-      usefulCount: exp.usefulCount,
-      notUsefulCount: exp.notUsefulCount,
-    }, { merge: true });
-  } catch (err) {
-    // ignore
-  }
+    const { id } = req.params;
+    const { vote } = req.body; // 'useful' | 'not_useful'
 
-  res.json({ success: true, usefulCount: exp.usefulCount, notUsefulCount: exp.notUsefulCount });
+    const exp = realExperiencesDB.find((e) => e.id === id) || demoExperiencesDB.find((e) => e.id === id);
+    if (!exp) {
+      res.status(404).json({ success: false, message: 'Experience not found.' });
+      return;
+    }
+
+    if (vote === 'useful') {
+      exp.usefulCount += 1;
+    } else if (vote === 'not_useful') {
+      exp.notUsefulCount += 1;
+    }
+
+    try {
+      await adminDb.collection('experiences').doc(id).set({
+        usefulCount: exp.usefulCount,
+        notUsefulCount: exp.notUsefulCount,
+      }, { merge: true });
+    } catch (err) {
+      // ignore
+    }
+
+    res.json({ success: true, usefulCount: exp.usefulCount, notUsefulCount: exp.notUsefulCount });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to record vote.' });
+  }
 });
 
 // DELETE /api/experiences/:id (Delete an experience - author only)
@@ -879,7 +887,12 @@ CRITICAL INSTRUCTIONS:
 
 // GET /api/solutions
 app.get('/api/solutions', (req: Request, res: Response) => {
-  res.json({ success: true, solutions: solutionsDB });
+  try {
+    res.json({ success: true, solutions: solutionsDB });
+  } catch (error) {
+    console.error('Error fetching solutions:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve solutions.' });
+  }
 });
 
 // POST /api/solutions (Save/Bookmark solution)
@@ -1072,13 +1085,18 @@ The Common Mind Community Team
 
 // GET /api/notifications (Fetch all community & outcome notifications)
 app.get('/api/notifications', (req: Request, res: Response) => {
-  const unreadCount = notificationsDB.filter((n) => !n.read).length;
-  res.json({
-    success: true,
-    count: notificationsDB.length,
-    unreadCount,
-    notifications: notificationsDB,
-  });
+  try {
+    const unreadCount = notificationsDB.filter((n) => !n.read).length;
+    res.json({
+      success: true,
+      count: notificationsDB.length,
+      unreadCount,
+      notifications: notificationsDB,
+    });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve notifications.' });
+  }
 });
 
 // POST /api/notifications/:id/read (Mark single notification as read)

@@ -102,7 +102,7 @@ export const ExperienceCard: React.FC<ExperienceCardProps> = ({
   return (
     <article
       id={`experience-card-${experience.id}`}
-      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs hover:shadow-sm transition-all duration-200 overflow-hidden flex flex-col justify-between relative"
+      className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200/90 dark:border-amber-900/30 shadow-2xs hover:shadow-sm transition-all duration-200 overflow-hidden flex flex-col justify-between relative"
     >
       {/* Delete Confirmation Overlay */}
       {confirmDelete && (
@@ -155,7 +155,7 @@ export const ExperienceCard: React.FC<ExperienceCardProps> = ({
       <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-850/40">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-amber-950/30 text-slate-800 dark:text-amber-300">
               {experience.category}
             </span>
             <QualityBadge label={experience.qualityLabel} />

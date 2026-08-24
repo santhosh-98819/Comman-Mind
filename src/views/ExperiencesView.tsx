@@ -92,7 +92,7 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
             <Compass className="w-3.5 h-3.5" />
             <span>COMMUNITY EXPERIENCE REPOSITORY</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             {viewMode === 'community' ? 'Community Experiences' : 'Demo Reference Experiences'}
           </h1>
           <p className="text-sm text-slate-600 mt-1">
@@ -193,7 +193,7 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search experiences: 'how people learned programming', 'exam failure', 'scope creep'..."
-              className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-hidden"
+              className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-hidden"
             />
           </div>
           <button
@@ -229,7 +229,7 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
             <select
               value={selectedOutcome}
               onChange={(e) => setSelectedOutcome(e.target.value)}
-              className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs cursor-pointer"
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs cursor-pointer"
             >
               <option value="all">All Outcomes</option>
               <option value="worked">Worked</option>
@@ -243,7 +243,7 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs cursor-pointer"
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs cursor-pointer"
             >
               <option value="most_useful">Most Useful</option>
               <option value="newest">Newest First</option>
@@ -269,7 +269,7 @@ export const ExperiencesView: React.FC<ExperiencesViewProps> = ({
             <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
               0 Community Experiences
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
               No community experiences yet.
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed pt-1">

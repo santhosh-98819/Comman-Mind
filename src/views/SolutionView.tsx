@@ -148,7 +148,7 @@ export const SolutionView: React.FC<SolutionViewProps> = ({ solution, onBack, on
       <section className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-2xs space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Your Diagnosed Situation
             </h2>
             <Tooltip content="Synthesized summary of your problem, goals, and constraints" position="top">
@@ -217,7 +217,7 @@ export const SolutionView: React.FC<SolutionViewProps> = ({ solution, onBack, on
                     ({realExps.length} real community {realExps.length === 1 ? 'case' : 'cases'} in database)
                   </span>
                 </div>
-                <h2 className="text-xl font-bold text-slate-900 mt-1">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
                   {realExps.length > 0
                     ? 'Relevant Real Community Experiences'
                     : 'Community Experience Database'}
@@ -232,7 +232,7 @@ export const SolutionView: React.FC<SolutionViewProps> = ({ solution, onBack, on
                   <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
                     CM
                   </div>
-                  <h3 className="font-bold text-base text-slate-900">
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
                     No community experiences yet
                   </h3>
                 </div>
@@ -397,7 +397,7 @@ export const SolutionView: React.FC<SolutionViewProps> = ({ solution, onBack, on
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
-              <h3 className="font-semibold text-base text-slate-900">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                 Uncertainties & System Boundaries
               </h3>
             </div>

@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 let projectId = 'gen-lang-client-0099952485';
-let databaseId = 'ai-studio-commonmind-1be402e9-53c6-4be5-bf36-4a58c66ba872';
+let databaseId = '(default)';
 
 try {
   const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');

@@ -685,7 +685,7 @@ export const AskView: React.FC<AskViewProps> = ({
                   <p className="text-xs text-slate-600 dark:text-slate-400">
                     {sc.summary}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 italic bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-300 line-clamp-2 italic bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl">
                     "{sc.data.problem}"
                   </p>
                 </div>
@@ -1073,16 +1073,16 @@ export const AskView: React.FC<AskViewProps> = ({
                       transition={{ duration: 0.2 }}
                       className={`flex items-center gap-2.5 text-xs ${
                         isCurrent
-                          ? 'font-bold text-indigo-700 dark:text-indigo-400'
+                          ? 'font-bold text-amber-700 dark:text-amber-300'
                           : isDone
-                          ? 'text-emerald-700 dark:text-emerald-400 font-medium'
+                          ? 'text-orange-700 dark:text-orange-400 font-medium'
                           : 'text-slate-400 dark:text-slate-600'
                       }`}
                     >
                       {isDone ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                       ) : isCurrent ? (
-                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-ping flex-shrink-0" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-600 dark:bg-amber-400 animate-ping flex-shrink-0" />
                       ) : (
                         <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700 flex-shrink-0" />
                       )}
@@ -1095,7 +1095,7 @@ export const AskView: React.FC<AskViewProps> = ({
               {/* Progress bar */}
               <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                 <motion.div
-                  className="bg-gradient-to-r from-indigo-500 via-emerald-400 to-indigo-600 h-full rounded-full"
+                  className="bg-gradient-to-r from-yellow-100 via-amber-400 to-orange-500 h-full rounded-full"
                   initial={{ width: '10%' }}
                   animate={{
                     width: `${Math.min(100, Math.round(((currentStageIdx + 1) / SIMPLE_LOADING_STAGES.length) * 100))}%`,

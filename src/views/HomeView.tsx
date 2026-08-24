@@ -81,10 +81,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.12]">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.12]">
             REAL EXPERIENCES.
             <br />
-            <span className="bg-gradient-to-r from-indigo-700 via-slate-800 to-indigo-950 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-indigo-700 via-slate-800 to-indigo-950 dark:from-indigo-300 dark:via-white dark:to-indigo-200 bg-clip-text text-transparent">
               REAL SOLUTIONS.
             </span>
           </h1>
@@ -239,7 +239,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
             A Fundamental Paradigm Shift
           </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
             Why Common Mind?
           </h2>
           <p className="text-sm text-slate-600 max-w-xl mx-auto">
@@ -319,7 +319,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               Browse Experience Categories
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
@@ -352,7 +352,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-indigo-50 text-slate-700 group-hover:text-indigo-600 flex items-center justify-center transition-colors">
                     <Icon className="w-4 h-4" />
                   </div>
-                  <h3 className="font-semibold text-sm text-slate-900 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 transition-colors">
                     {cat.name}
                   </h3>
                   <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
@@ -379,7 +379,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <Compass className="w-3.5 h-3.5 text-sky-600" />
               <span>COMMUNITY REPOSITORY</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               {featuredExperiences.length > 0
                 ? 'Recent Problem-Solving Experiences'
                 : '0 Community Experiences'}
@@ -409,7 +409,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
               <Compass className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-800">
+            <h3 className="text-base font-bold text-slate-800 dark:text-white">
               No community experiences yet.
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
