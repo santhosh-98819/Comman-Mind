@@ -15,7 +15,7 @@ export const SignUpView: React.FC<SignUpViewProps> = ({ onNavigate, onSuccessRed
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isAnonymousPref, setIsAnonymousPref] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export const SignUpView: React.FC<SignUpViewProps> = ({ onNavigate, onSuccessRed
       return;
     }
     if (!agreeTerms) {
-      setError('Please agree to the Terms of Service and Privacy Policy to continue.');
+      setError('You must agree to the Terms & Conditions and Community Guidelines and acknowledge the Privacy Policy to create a Common Mind account.');
       return;
     }
 
@@ -311,14 +311,14 @@ export const SignUpView: React.FC<SignUpViewProps> = ({ onNavigate, onSuccessRed
               className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500"
             />
             <span>
-              I agree to the <span className="font-semibold text-slate-900">Common Mind Terms</span> and acknowledge that shared experiences are published under community guidelines.
+              I agree to the <a href="/terms-and-conditions" target="_blank" className="font-semibold text-indigo-600 hover:underline">Terms & Conditions</a> and <a href="/community-guidelines" target="_blank" className="font-semibold text-indigo-600 hover:underline">Community Guidelines</a>, and I acknowledge the <a href="/privacy-policy" target="_blank" className="font-semibold text-indigo-600 hover:underline">Privacy Policy</a>.
             </span>
           </label>
 
           <button
             type="submit"
             id="signup-submit-btn"
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || !agreeTerms}
             className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all cursor-pointer disabled:opacity-60"
           >
             {loading ? (

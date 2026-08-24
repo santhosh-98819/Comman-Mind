@@ -20,6 +20,11 @@ import { ProfileView } from './views/ProfileView';
 import { OnboardingView } from './views/OnboardingView';
 import { LoginView } from './views/LoginView';
 import { SignUpView } from './views/SignUpView';
+import { LegalAcceptanceView } from './views/LegalAcceptanceView';
+import { PrivacyPolicyView } from './views/PrivacyPolicyView';
+import { TermsAndConditionsView } from './views/TermsAndConditionsView';
+import { CommunityGuidelinesView } from './views/CommunityGuidelinesView';
+import { useLegalAcceptance } from './hooks/useLegalAcceptance';
 
 export type ViewMode =
   | 'home'
@@ -32,10 +37,16 @@ export type ViewMode =
   | 'profile'
   | 'onboarding'
   | 'login'
-  | 'signup';
+  | 'signup'
+  | 'legal-acceptance'
+  | 'privacy-policy'
+  | 'terms-and-conditions'
+  | 'community-guidelines';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('onboarding');
+  const [previousView, setPreviousView] = useState<ViewMode>('home'); // To track where to return to
+  const { needsAcceptance, acceptanceLoading } = useLegalAcceptance();
   const [user, setUser] = useState<UserProfile>(getLocalUser());
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [featuredExperiences, setFeaturedExperiences] = useState<Experience[]>([]);
@@ -62,10 +73,22 @@ export default function App() {
     refreshCounts();
   }, []);
 
+  useEffect(() => {
+    if (needsAcceptance && currentView !== 'signup' && currentView !== 'login' && currentView !== 'legal-acceptance' && currentView !== 'privacy-policy' && currentView !== 'terms-and-conditions' && currentView !== 'community-guidelines') {
+      setCurrentView('legal-acceptance');
+    }
+  }, [needsAcceptance, currentView]);
+
   const handleNavigate = (view: ViewMode) => {
+    setPreviousView(currentView);
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     refreshCounts();
+  };
+
+  const handleBack = () => {
+    setCurrentView(previousView);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectProblemPreset = (problemText: string, category?: Category) => {
@@ -129,6 +152,14 @@ export default function App() {
             onSuccessRedirect={() => handleNavigate('dashboard')}
           />
         )}
+
+        {currentView === 'legal-acceptance' && (
+          <LegalAcceptanceView onComplete={() => handleNavigate('home')} onNavigate={handleNavigate} />
+        )}
+
+        {currentView === 'privacy-policy' && <PrivacyPolicyView onBack={handleBack} />}
+        {currentView === 'terms-and-conditions' && <TermsAndConditionsView onBack={handleBack} />}
+        {currentView === 'community-guidelines' && <CommunityGuidelinesView onBack={handleBack} />}
 
         {currentView === 'ask' && (
           <AskView

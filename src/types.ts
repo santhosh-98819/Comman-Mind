@@ -173,6 +173,16 @@ export interface OutcomeNotification {
   };
 }
 
+export interface LegalAcceptance {
+  termsAccepted: boolean;
+  communityGuidelinesAccepted: boolean;
+  privacyPolicyAcknowledged: boolean;
+  termsVersion: string;
+  communityGuidelinesVersion: string;
+  privacyPolicyVersion: string;
+  acceptedAt?: string;
+}
+
 export interface UserProfile {
   id: string;
   uid?: string;
@@ -199,6 +209,7 @@ export interface UserProfile {
   notificationPreferences?: NotificationPreferences;
   aiWritingAssistEnabled?: boolean;
   onboardingCompleted: boolean;
+  legalAcceptance?: LegalAcceptance;
 }
 
 export type WritingSuggestionType = 'typo_grammar' | 'alternative_wording' | 'clarity' | 'concise' | 'professional';

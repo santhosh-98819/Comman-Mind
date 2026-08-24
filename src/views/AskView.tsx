@@ -78,7 +78,6 @@ export const AskView: React.FC<AskViewProps> = ({
 
   // UI View Mode (Form vs Category Experience Hub)
   const [activeTab, setActiveTab] = useState<'form' | 'experiences' | 'patterns'>('form');
-  const [showCategoryIntelligence, setShowCategoryIntelligence] = useState(true);
 
   // Category experiences state
   const [categoryExperiences, setCategoryExperiences] = useState<Experience[]>([]);
@@ -384,90 +383,6 @@ export const AskView: React.FC<AskViewProps> = ({
         </div>
       </div>
 
-      {/* ========================================================
-          2. ACTIVE CATEGORY GUIDE & LESSONS (Animated Expandable)
-         ======================================================== */}
-      <motion.div
-        layout
-        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden transition-all"
-      >
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-50 via-indigo-50/40 to-purple-50/30 dark:from-slate-900 dark:via-indigo-950/20 dark:to-purple-950/20 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${currentCategoryData.badgeBg} ${currentCategoryData.badgeText} border ${currentCategoryData.borderClass} shadow-2xs`}>
-              <CategoryIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100">
-                  {currentCategoryData.simpleTitle}
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300">
-                  {categoryStats.total} Stories in Library
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                {currentCategoryData.simpleDescription}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowCategoryIntelligence(!showCategoryIntelligence)}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 font-semibold cursor-pointer py-1 px-2.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
-            >
-              <span>{showCategoryIntelligence ? 'Hide Strategy Guide' : 'Show Strategy Guide'}</span>
-              {showCategoryIntelligence ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {showCategoryIntelligence && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              className="overflow-hidden"
-            >
-              <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800/80">
-                {/* What Usually Works in this Category */}
-                <div className="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/40 space-y-2.5">
-                  <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300 text-xs">
-                    <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <span>Proven Strategies for {currentCategoryData.shortLabel}</span>
-                  </div>
-                  <ul className="space-y-2 text-slate-700 dark:text-slate-300">
-                    {currentCategoryData.provenPatterns.map((pat, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <span className="leading-relaxed">{pat}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Common Mistakes to Avoid */}
-                <div className="p-4 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 space-y-2.5">
-                  <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-300 text-xs">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                    <span>Common Pitfalls to Avoid in {currentCategoryData.shortLabel}</span>
-                  </div>
-                  <ul className="space-y-2 text-slate-700 dark:text-slate-300">
-                    {currentCategoryData.commonPitfalls.map((pit, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0 mt-1.5" />
-                        <span className="leading-relaxed">{pit}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* View Mode Sub-tabs (Form vs Matching Cases vs Example Presets) */}
         <div className="px-4 sm:px-5 py-2 bg-slate-50/80 dark:bg-slate-900/60 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-slate-100 dark:border-slate-800">
@@ -528,8 +443,6 @@ export const AskView: React.FC<AskViewProps> = ({
             )}
           </div>
         </div>
-      </motion.div>
-
       {/* ========================================================
           3. TAB CONTENT: REAL COMMUNITY STORIES
          ======================================================== */}

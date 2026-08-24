@@ -123,6 +123,11 @@ export const Footer: React.FC<{ onNavigate: (view: ViewMode) => void }> = ({ onN
               <strong>Disclaimer:</strong> Common Mind presents peer experiences and probabilistic AI reasoning. It does not replace certified professional, medical, legal, or fiduciary counsel.
             </span>
           </div>
+          <div className="flex gap-4 text-[11px] text-slate-500">
+            <button onClick={() => onNavigate('privacy-policy')} className="hover:text-white transition-colors">Privacy Policy</button>
+            <button onClick={() => onNavigate('terms-and-conditions')} className="hover:text-white transition-colors">Terms & Conditions</button>
+            <button onClick={() => onNavigate('community-guidelines')} className="hover:text-white transition-colors">Community Guidelines</button>
+          </div>
           <div className="text-[11px] text-slate-400 flex-shrink-0">
             © {new Date().getFullYear()} Common Mind. All rights reserved.
           </div>
