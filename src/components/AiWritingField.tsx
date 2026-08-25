@@ -537,16 +537,15 @@ export const AiWritingField: React.FC<AiWritingFieldProps> = ({
       )}
 
       {/* ====================================================
-          AI SUGGESTIONS REVIEW PANEL
-          User control: [Apply] / [Keep Original] - Never auto-replaces
+          AI SUGGESTIONS REVIEW PANEL (Compact & Clear)
          ==================================================== */}
       {isEnabled && suggestions.length > 0 && showCard && (
-        <div className="p-3.5 bg-amber-50/90 dark:bg-amber-950/30 rounded-xl border border-amber-200/90 dark:border-amber-800/60 shadow-xs space-y-3 animate-fadeIn">
-          <div className="flex items-center justify-between border-b border-amber-200/70 dark:border-amber-800/40 pb-2">
+        <div className="p-2.5 bg-amber-50/90 dark:bg-amber-950/30 rounded-xl border border-amber-200/90 dark:border-amber-800/60 shadow-2xs space-y-2 animate-fadeIn text-xs">
+          <div className="flex items-center justify-between border-b border-amber-200/60 dark:border-amber-800/40 pb-1.5">
             <div className="flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
               <span className="text-xs font-bold text-amber-950 dark:text-amber-200">
-                AI Writing Suggestions ({suggestions.length})
+                Suggestions ({suggestions.length})
               </span>
             </div>
 
@@ -555,109 +554,68 @@ export const AiWritingField: React.FC<AiWritingFieldProps> = ({
                 <button
                   type="button"
                   onClick={handleApplyAll}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 dark:hover:bg-emerald-800 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 dark:hover:bg-emerald-800 px-2 py-0.5 rounded transition-colors cursor-pointer"
                 >
-                  <CheckCheck className="w-3.5 h-3.5" />
+                  <CheckCheck className="w-3 h-3" />
                   <span>Apply All</span>
                 </button>
               )}
               <button
                 type="button"
                 onClick={handleDismissAll}
-                className="text-[11px] text-amber-800/80 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-200 hover:underline cursor-pointer"
+                className="text-[10px] text-amber-800/80 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-200 hover:underline cursor-pointer"
               >
-                Dismiss All
+                Dismiss
               </button>
             </div>
           </div>
 
           {/* List of individual suggestions */}
-          <div className="space-y-2.5">
+          <div className="space-y-1.5">
             {suggestions.map((suggestion) => {
-              const isAlternative = suggestion.type === 'alternative_wording' || suggestion.type === 'professional';
-              const isConcise = suggestion.type === 'concise';
-              const isClarity = suggestion.type === 'clarity';
-
               return (
                 <div
                   key={suggestion.id}
-                  className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60 text-xs space-y-2"
+                  className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-900/60 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-1.5">
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        isAlternative
-                          ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-                          : isConcise
-                          ? 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                          : isClarity
-                          ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                          : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-                      }`}
-                    >
-                      {isAlternative
-                        ? 'Constructive Tone'
-                        : isConcise
-                        ? 'Concise Phrasing'
-                        : isClarity
-                        ? 'Clarity & Flow'
-                        : 'Typo / Grammar Correction'}
-                    </span>
-
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                      {suggestion.reason}
-                    </span>
-                  </div>
-
-                  {/* Original vs Suggested Comparison */}
-                  <div className="space-y-1 bg-slate-50 dark:bg-slate-950/80 p-2.5 rounded-md border border-slate-200/70 dark:border-slate-800">
-                    <div className="text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
-                      <span className="text-slate-400 dark:text-slate-500 font-semibold flex-shrink-0">
-                        Original:
-                      </span>
-                      <span className="line-through text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 rounded">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <span className="line-through text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-1 rounded truncate max-w-[140px]">
                         "{suggestion.original}"
                       </span>
-                    </div>
-                    <div className="text-slate-900 dark:text-slate-100 font-medium flex items-start gap-1.5">
-                      <span className="text-indigo-700 dark:text-indigo-400 font-bold flex-shrink-0">
-                        Suggested:
-                      </span>
-                      <span className="text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1 rounded font-semibold">
+                      <span className="text-slate-400">→</span>
+                      <span className="text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1 rounded font-semibold truncate max-w-[180px]">
                         "{suggestion.suggested}"
                       </span>
                     </div>
+                    {suggestion.reason && (
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 italic truncate">
+                        {suggestion.reason}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Actions: [Keep Original] [Apply] */}
-                  <div className="flex items-center justify-end gap-2 pt-1">
+                  {/* Actions: [Keep] [Apply] */}
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                     <button
                       type="button"
                       onClick={() => handleDismissSingle(suggestion)}
-                      className="px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      className="px-2 py-0.5 rounded text-[10px] font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                     >
-                      Keep Original
+                      Keep
                     </button>
                     <button
                       type="button"
                       onClick={() => handleApplySingle(suggestion)}
-                      className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-[11px] font-bold text-white bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 shadow-2xs transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold text-white bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 shadow-2xs transition-colors cursor-pointer"
                     >
-                      <Check className="w-3 h-3 text-emerald-400" />
-                      <span>Apply Suggestion</span>
+                      <Check className="w-2.5 h-2.5 text-emerald-400" />
+                      <span>Apply</span>
                     </button>
                   </div>
                 </div>
               );
             })}
-          </div>
-
-          {/* Privacy Footnote */}
-          <div className="flex items-center justify-between text-[10px] text-amber-800/80 dark:text-amber-400 pt-1">
-            <span className="flex items-center gap-1">
-              <Shield className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-              <span>Draft text is processed live to generate suggestions and is never permanently stored without form submission.</span>
-            </span>
           </div>
         </div>
       )}
